@@ -1,5 +1,5 @@
 desktop.ini
-./games/*
+games/**
 adelfors-arcade.exe
 
 # Potential C files:
