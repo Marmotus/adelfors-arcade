@@ -1,0 +1,19 @@
+desktop.ini
+./games/*
+adelfors-arcade.exe
+
+# Potential C files:
+
+# Prerequisites
+*.d
+
+# Object files
+*.o
+*.ko
+*.obj
+*.elf
+
+# Linker output
+*.ilk
+*.map
+*.exp
