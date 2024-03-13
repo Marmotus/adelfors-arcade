@@ -14,15 +14,15 @@ SDL2 is required. To install SDL2:
 
 1. Install MSYS2 at https://www.msys2.org/
 
-2. Install SDL2 by running MSYS2 and entering (without the quotation marks):
-    "pacman -S mingw-w64-x86_64-SDL2"
-    "pacman -S mingw-w64-x86_64-SDL2_ttf"
-    "pacman -S mingw-w64-x86_64-SDL2_image"
+2. Install SDL2 by running MSYS2 and entering:
+→`pacman -S mingw-w64-x86_64-SDL2`
+→`pacman -S mingw-w64-x86_64-SDL2_ttf`
+→`pacman -S mingw-w64-x86_64-SDL2_image`
 
 3. For good measure, you can keep MSYS updated by running:
-    "pacman -Sy"
-    "pacman -Syy"
-    "pacman -Syu"
+→`pacman -Sy`
+→`pacman -Syy`
+→`pacman -Syu`
 
 To compile, you simply double-click the "compile.bat" file.
 
