@@ -1,15 +1,4 @@
 #include "main.h"
-#include <dirent.h>
-#include <errhandlingapi.h>
-#include <errno.h>
-#include <handleapi.h>
-#include <minwinbase.h>
-#include <processthreadsapi.h>
-#include <stdio.h>
-#include <string.h>
-#include <synchapi.h>
-#include <sys/stat.h>
-#include <windows.h>
 
 int main(int argc, char* argv[])
 {
@@ -22,6 +11,7 @@ int main(int argc, char* argv[])
   state.columns = 4;
   state.selection = (Position){0, 0};
   state.page = 0;
+  state.window_handle = NULL;
   state.game_process_handle = 0;
   state.game_entries_len = 0;
   state.input_enabled = 0;
@@ -54,6 +44,11 @@ int main(int argc, char* argv[])
 
   // SDL_GetWindowSize(state.window, &state.window_w, &state.window_h);
   SDL_GetRendererOutputSize(state.renderer, &state.window_w, &state.window_h);
+
+  SDL_SysWMinfo wm_info;
+  SDL_VERSION(&wm_info.version);
+  SDL_GetWindowWMInfo(state.window, &wm_info);
+  state.window_handle = wm_info.info.win.window;
   
   // Initial render
   render(&state);
@@ -106,6 +101,8 @@ int main(int argc, char* argv[])
     {
       CloseHandle(state.game_process_handle);
       state.game_process_handle = NULL;
+      if (state.window_handle != NULL) SetFocus(state.window_handle);
+      else printf("ERROR: Window handle null. Can't set focus\n");
     }
     
     should_quit = handle_events(&state);
@@ -583,6 +580,12 @@ void free_game_entries(State* state)
 
 int find_games(State* state)
 {
+  if (state == NULL)
+  {
+    printf("ERROR: find_games(): state is null\n");
+    return 1;
+  }
+  
   const char GAMES_PATH[] = "./games";
   
   DIR* dir = opendir(GAMES_PATH);
@@ -590,6 +593,8 @@ int find_games(State* state)
   if (dir != NULL)
   {
     free_game_entries(state);
+    state->selection = (Position){0, 0};
+    state->page = 0;
     
     struct dirent* dirp;
 
@@ -608,9 +613,10 @@ int find_games(State* state)
       struct stat s;
       if (stat(path, &s) == 0)
       {
+        // If what we found is a directory
         if (s.st_mode & S_IFDIR)
         {
-          // Open the folder and look for a .exe
+          // Open the directory and look for a .exe
           DIR* game_dir = opendir(path);
           
           if (game_dir != NULL)
@@ -619,6 +625,8 @@ int find_games(State* state)
             while((dirp2 = readdir(game_dir)) != NULL)
             {
               if (strcmp(dirp2->d_name, ".") == 0 || strcmp(dirp2->d_name, "..") == 0 || strcmp(dirp2->d_name, "desktop.ini") == 0) continue;
+              // Ignore some potential .exes
+              if (strcmp(dirp->d_name, "UnityCrashHandler64.exe") == 0) continue;
               
               int name_len = strlen(dirp2->d_name);
               if (name_len > 4)
@@ -714,16 +722,32 @@ void run_selected_game(State* state)
       int sel_idx = get_real_selection_index(state);
       if (state->game_entries[sel_idx].exe_path != NULL)
       {
-        printf("\nLaunching %s...\n\n", state->game_entries[sel_idx].game_title);
+        printf("---Launching \"%s\"...---\n", state->game_entries[sel_idx].game_title);
         
         STARTUPINFO si;
         PROCESS_INFORMATION pi;
+
+        si.dwX = 0;
+        si.dwY = 0;
+        si.dwXSize = state->window_w;
+        si.dwYSize = state->window_h;
+        si.dwFlags = STARTF_RUNFULLSCREEN;
 
         ZeroMemory(&si, sizeof(si));
         si.cb = sizeof(si);
         ZeroMemory(&pi, sizeof(pi));
 
-        if (!CreateProcess(NULL, state->game_entries[sel_idx].exe_path, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi))
+        if (!CreateProcess(
+          NULL,
+          state->game_entries[sel_idx].exe_path,
+          NULL,
+          NULL,
+          FALSE,
+          HIGH_PRIORITY_CLASS | WS_POPUP,
+          NULL,
+          NULL,
+          &si,
+          &pi))
         {
           printf("ERROR: Failed to launch game. CreateProcess failed: %lu\n", GetLastError());
           return;
@@ -739,7 +763,7 @@ void run_selected_game(State* state)
         
         state->menu_state = 1;
 
-        printf("\n\n%s exited\n\n", state->game_entries[sel_idx].game_title);
+        printf("\n---\"%s\" exited---\n", state->game_entries[sel_idx].game_title);
 
         render(state);
       }

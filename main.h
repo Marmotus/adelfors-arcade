@@ -1,9 +1,13 @@
-#include "stdio.h"
-#include "stdlib.h"
 #include "C:/msys64/mingw64/include/SDL2/SDL.h"
 #include "C:/msys64/mingw64/include/SDL2/SDL_ttf.h"
 #include "C:/msys64/mingw64/include/SDL2/SDL_image.h"
-#include <minwindef.h>
+#include "C:/msys64/mingw64/include/SDL2/SDL_syswm.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <dirent.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <windows.h>
 
 
 
@@ -46,6 +50,7 @@ typedef enum {
 typedef struct {
   SDL_Window* window;
   SDL_Renderer* renderer;
+  HWND window_handle;
   HANDLE game_process_handle;
   int window_w;
   int window_h;
