@@ -359,7 +359,7 @@ void render_loading_ui(State* state)
 {
   if (state == NULL)
   {
-    printf("ERROR: render_loading_ui: state is NULL");
+    printf("ERROR: render_loading_ui: state is null");
     return;
   }
 
