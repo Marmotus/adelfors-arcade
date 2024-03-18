@@ -20,9 +20,6 @@ int main(int argc, char* argv[])
   state.window_h = 0;
   state.menu_state = LOADING;
 
-  state.game_entries = calloc(13, sizeof(GameEntry));
-  state.game_entries_len = 13;
-
   printf("Initializing SDL...\n");
   if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_JOYSTICK))
   {
@@ -64,11 +61,11 @@ int main(int argc, char* argv[])
   if (state.joystick == NULL) printf("ERROR: JOYSTICK NULL!\n");
   else printf("Joystick found\n");
   
-  // printf("Finding games...\n");
-  // if (find_games(&state) != 0)
-  // {
-  //   printf("Error finding games\n");
-  // }
+  printf("Finding games...\n");
+  if (find_games(&state) != 0)
+  {
+    printf("Error finding games\n");
+  }
 
   generate_new_game_name(&state);
 
@@ -948,17 +945,20 @@ void generate_page_text(State* state)
   const int len = 2 + ((state->page / 10) + 1) + (state->game_entries_len / (state->rows * state->columns) + 1) + 1;
   char* str = calloc(len, sizeof(char));
 
-  sprintf(str, "[%d/%d]", state->page + 1, state->game_entries_len / (state->rows * state->columns) + 1);
+  if (str != NULL)
+  {
+    sprintf(str, "[%d/%d]", state->page + 1, state->game_entries_len / (state->rows * state->columns) + 1);
+  }
   
   SDL_Surface* page_text_surface = TTF_RenderUTF8_Solid(font_big, str, TEXT_COLOR_FADED);
   if (page_text_surface == NULL) printf("ERROR: generate_page_text(): %s\n", TTF_GetError());
 
   if (page_text_texture != NULL) SDL_DestroyTexture(page_text_texture);
   page_text_texture = SDL_CreateTextureFromSurface(state->renderer, page_text_surface);
-  if (game_name_texture == NULL) printf("ERROR: generate_page_text(): %s\n", SDL_GetError());
+  if (page_text_texture == NULL) printf("ERROR: generate_page_text(): %s\n", SDL_GetError());
   SDL_FreeSurface(page_text_surface);
 
-  free(str);
+  if (str != NULL) free(str);
 }
 
 void set_menu_state(State* state, MenuState new_state)
