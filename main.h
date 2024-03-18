@@ -1,7 +1,7 @@
-#include "C:/msys64/mingw64/include/SDL2/SDL.h"
-#include "C:/msys64/mingw64/include/SDL2/SDL_ttf.h"
-#include "C:/msys64/mingw64/include/SDL2/SDL_image.h"
-#include "C:/msys64/mingw64/include/SDL2/SDL_syswm.h"
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_ttf.h>
+#include <SDL2/SDL_image.h>
+#include <SDL2/SDL_syswm.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <dirent.h>
@@ -11,13 +11,14 @@
 
 
 
-#define TICK_RATE 1000 / 30
+#define TICK_RATE (1000 / 30)
 
 #define ARCADE_UI_EDGE_MARGIN 100
 
 const SDL_Color TEXT_COLOR = {255, 255, 255, 255};
-const SDL_Color BACKGROUND_COLOR = {0, 0, 0, 255};
-const SDL_Color FOREGROUND_COLOR = {28, 28, 28, 255};
+const SDL_Color TEXT_COLOR_FADED = {255, 255, 255, 150};
+const SDL_Color BACKGROUND_COLOR = {28, 0, 0, 255};
+const SDL_Color FOREGROUND_COLOR = {42, 28, 28, 255};
 const SDL_Color SELECTION_COLOR = {80, 80, 80, 255};
 
 TTF_Font* font_big = NULL;
@@ -27,9 +28,12 @@ SDL_Texture* game_name_texture = NULL;
 SDL_Texture* run_game_hint_texture = NULL;
 SDL_Texture* loading_text_texture = NULL;
 SDL_Texture* no_games_text_texure = NULL;
+SDL_Texture* page_text_texture = NULL;
 
-SDL_Surface* button_pink_surface = NULL;
-SDL_Texture* button_pink_texture = NULL;
+SDL_Texture* button_accept_texture = NULL;
+SDL_Texture* arrow_texture = NULL;
+
+unsigned char selection_alpha = 0;
 
 typedef struct {
   char* game_title;
@@ -45,6 +49,7 @@ typedef enum {
   LOADING = 0,
   GAME_SELECT = 1,
   SHUTDOWN = 2,
+  SPLASH = 3,
 } MenuState;
 
 typedef struct {
@@ -66,6 +71,7 @@ typedef struct {
 } State;
 
 int load_font(State* state, const char* font_path);
+int load_arcade_images(State* state);
 
 void free_state(State* state);
 void free_game_entries(State* state);
@@ -90,3 +96,6 @@ void move_select_right(State* state);
 int get_real_selection_index(State* state);
 
 void generate_new_game_name(State* state);
+void generate_page_text(State* state);
+
+void set_menu_state(State* state, MenuState new_state);

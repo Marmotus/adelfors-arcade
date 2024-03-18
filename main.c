@@ -16,12 +16,15 @@ int main(int argc, char* argv[])
   state.game_entries_len = 0;
   state.input_enabled = 0;
   state.joystick = NULL;
-  state.window_w = 1650;
-  state.window_h = 1050;
-  state.menu_state = 0;
+  state.window_w = 0;
+  state.window_h = 0;
+  state.menu_state = LOADING;
+
+  state.game_entries = calloc(13, sizeof(GameEntry));
+  state.game_entries_len = 13;
 
   printf("Initializing SDL...\n");
-  if (SDL_Init(SDL_INIT_EVERYTHING | SDL_INIT_JOYSTICK))
+  if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_JOYSTICK))
   {
     printf("Error initializing SDL: %s\n", SDL_GetError());
     return 1;
@@ -42,7 +45,6 @@ int main(int argc, char* argv[])
   state.renderer = SDL_CreateRenderer(state.window, -1, SDL_RENDERER_ACCELERATED);
   if (state.renderer == NULL) return 1;
 
-  // SDL_GetWindowSize(state.window, &state.window_w, &state.window_h);
   SDL_GetRendererOutputSize(state.renderer, &state.window_w, &state.window_h);
 
   SDL_SysWMinfo wm_info;
@@ -50,22 +52,11 @@ int main(int argc, char* argv[])
   SDL_GetWindowWMInfo(state.window, &wm_info);
   state.window_handle = wm_info.info.win.window;
   
-  // Initial render
-  render(&state);
-  
-  load_font(&state, "./font/font.ttf");
+  if (load_font(&state, "./font/font.ttf") == 1) return EXIT_FAILURE;
 
-  printf("Loading sprites...\n");
-  if ((button_pink_surface = IMG_Load("./images/arcade_button_pink.png")) != NULL)
-  {
-    if ((button_pink_texture = SDL_CreateTextureFromSurface(state.renderer, button_pink_surface)) == NULL)
-    {
-      printf("  ERROR: Creating texture for arcade_button_pink failed\n");
-    }
+  set_menu_state(&state, LOADING);
 
-    SDL_FreeSurface(button_pink_surface);
-  }
-  else printf("  ERROR: Failed to load \"arcade_button_pink.png\"\n");
+  if (load_arcade_images(&state) == 1) return EXIT_FAILURE;
 
   // Enable joystick input and find first available joystick
   SDL_JoystickEventState(SDL_ENABLE);
@@ -73,11 +64,11 @@ int main(int argc, char* argv[])
   if (state.joystick == NULL) printf("ERROR: JOYSTICK NULL!\n");
   else printf("Joystick found\n");
   
-  printf("Finding games...\n");
-  if (find_games(&state) != 0)
-  {
-    printf("Error finding games\n");
-  }
+  // printf("Finding games...\n");
+  // if (find_games(&state) != 0)
+  // {
+  //   printf("Error finding games\n");
+  // }
 
   generate_new_game_name(&state);
 
@@ -89,11 +80,7 @@ int main(int argc, char* argv[])
   SDL_EventState(SDL_SYSWMEVENT, SDL_IGNORE);
   SDL_EventState(SDL_MOUSEMOTION, SDL_IGNORE);
 
-  state.menu_state = 1;
-  state.input_enabled = 1;
-  
-  // Initial render
-  render(&state);
+  set_menu_state(&state, GAME_SELECT);
   
   while (should_quit == 0)
   {
@@ -115,7 +102,9 @@ int main(int argc, char* argv[])
   if (run_game_hint_texture != NULL) SDL_DestroyTexture(run_game_hint_texture);
   if (loading_text_texture != NULL) SDL_DestroyTexture(loading_text_texture);
   if (no_games_text_texure != NULL) SDL_DestroyTexture(no_games_text_texure);
-  if (button_pink_texture != NULL) SDL_DestroyTexture(button_pink_texture);
+  if (button_accept_texture != NULL) SDL_DestroyTexture(button_accept_texture);
+  if (page_text_texture != NULL) SDL_DestroyTexture(page_text_texture);
+  if (arrow_texture != NULL) SDL_DestroyTexture(arrow_texture);
   
   if (font_big != NULL) TTF_CloseFont(font_big);
   if (font_medium != NULL) TTF_CloseFont(font_medium);
@@ -165,11 +154,11 @@ int handle_events(State* state)
           {
             if (event.jaxis.value > 0)
             {
-              if (state->menu_state == 1) move_select_right(state);
+              if (state->menu_state == GAME_SELECT) move_select_right(state);
             }
             else if (event.jaxis.value < 0)
             {
-              if (state->menu_state == 1) move_select_left(state);
+              if (state->menu_state == GAME_SELECT) move_select_left(state);
             }
           }
           
@@ -178,11 +167,11 @@ int handle_events(State* state)
           {
             if (event.jaxis.value > 0)
             {
-              if (state->menu_state == 1) move_select_down(state);
+              if (state->menu_state == GAME_SELECT) move_select_down(state);
             }
             else if (event.jaxis.value < 0)
             {
-              if (state->menu_state == 1) move_select_up(state);
+              if (state->menu_state == GAME_SELECT) move_select_up(state);
             }
           }
 
@@ -204,8 +193,9 @@ int handle_events(State* state)
           // Pink button
           case 0:
           {
-            if (state->menu_state == 1)
+            if (state->menu_state == GAME_SELECT)
             {
+              // Start game!
               if (state->game_process_handle == NULL) state->game_process_handle = CreateThread(NULL, 0, start_game_thread, state, 0, NULL);
             }
             break;
@@ -228,7 +218,7 @@ int handle_events(State* state)
           // Right black button
           case 6:
           {
-            if (state->menu_state == 1)
+            if (state->menu_state == GAME_SELECT)
             {
               //
             }
@@ -243,12 +233,6 @@ int handle_events(State* state)
           // Left black button
           case 7:
           {
-            // if (state->menu_state == 1) state->menu_state = 2;
-            // else if (state->menu_state == 2) state->menu_state = 1;
-
-            // should_render = 1;
-            
-            // printf("'Cancel' pressed\n");
             break;
           }
 
@@ -268,52 +252,66 @@ int handle_events(State* state)
         {
           case SDL_SCANCODE_UP:
           {
-            move_select_up(state);
+            if (state->menu_state == GAME_SELECT)
+            {
+              move_select_up(state);
+            }
             break;
           }
           case SDL_SCANCODE_DOWN:
           {
-            move_select_down(state);
+            if (state->menu_state == GAME_SELECT)
+            {
+              move_select_down(state);
+            }
             break;
           }
           case SDL_SCANCODE_LEFT:
           {
-            move_select_left(state);
+            if (state->menu_state == GAME_SELECT)
+            {
+              move_select_left(state);
+            }
             break;
           }
           case SDL_SCANCODE_RIGHT:
           {
-            move_select_right(state);
+            if (state->menu_state == GAME_SELECT)
+            {
+              move_select_right(state);
+            }
             break;
           }
 
           case SDL_SCANCODE_RETURN:
           {
-            if (state->menu_state == 1)
+            if (state->menu_state == GAME_SELECT)
             {
+              // Start game!
               if (state->game_process_handle == NULL) state->game_process_handle = CreateThread(NULL, 0, start_game_thread, state, 0, NULL);
             }
+
+            break;
           }
 
-          case SDL_SCANCODE_P:
+          case SDL_SCANCODE_G:
           {
-            if (state->menu_state != 1) break;
+            if (state->menu_state != GAME_SELECT) break;
             
-            // If Left Shift and R are held down when P is pressed
+            // If Left Shift and R are held down when G is pressed
             if (keyboard_state[SDL_SCANCODE_LSHIFT] == 1 && keyboard_state[SDL_SCANCODE_R] == 1)
             {
-              state->input_enabled = 0;
-              state->menu_state = 0;
+              set_menu_state(state, LOADING);
               render(state);
               
               printf("Searching for games...\n");
               find_games(state);
               printf("Search done\n");
 
-              state->menu_state = 1;
-              state->input_enabled = 1;
-              render(state);
+              set_menu_state(state, GAME_SELECT);
             }
+
+            break;
           }
 
           default:
@@ -348,9 +346,9 @@ void render(State* state)
   SDL_SetRenderDrawColor(state->renderer, BACKGROUND_COLOR.r, BACKGROUND_COLOR.g, BACKGROUND_COLOR.b, BACKGROUND_COLOR.a);
   SDL_RenderClear(state->renderer);
 
-  if (state->menu_state == 0) render_loading_ui(state);
-  else if (state->menu_state == 1) render_game_select_ui(state);
-  else if (state->menu_state == 2) render_shutdown_ui(state);
+  if (state->menu_state == LOADING) render_loading_ui(state);
+  else if (state->menu_state == GAME_SELECT) render_game_select_ui(state);
+  else if (state->menu_state == SHUTDOWN) render_shutdown_ui(state);
 
   SDL_RenderPresent(state->renderer);
 }
@@ -411,24 +409,66 @@ void render_game_select_ui(State* state)
       }
     }
     
-    if (button_pink_texture != NULL)
+    if (button_accept_texture != NULL)
     {
-      SDL_Rect btn_pink_rect = {0, 0, 0, 0};
-      SDL_QueryTexture(button_pink_texture, NULL, NULL, &btn_pink_rect.w, &btn_pink_rect.h);
+      SDL_Rect btn_rect = {0, 0, 0, 0};
+      SDL_QueryTexture(button_accept_texture, NULL, NULL, &btn_rect.w, &btn_rect.h);
 
       SDL_Rect pos_rect = {state->window_w - 500, state->window_h - 100, 75, 75};
 
-      SDL_RenderCopy(state->renderer, button_pink_texture, NULL, &pos_rect);
+      SDL_RenderCopy(state->renderer, button_accept_texture, NULL, &pos_rect);
     }
 
     if (run_game_hint_texture != NULL)
     {
-      SDL_Rect text_rect = {0, 0, 0, 0,};
+      SDL_Rect text_rect = {0, 0, 0, 0};
       SDL_QueryTexture(run_game_hint_texture, NULL, NULL, &text_rect.w, &text_rect.h);
       text_rect.x = state->window_w - text_rect.w - 50;
       text_rect.y = state->window_h - 75;
 
       SDL_RenderCopy(state->renderer, run_game_hint_texture, NULL, &text_rect);
+    }
+
+    if (state->page > 0)
+    {
+      if (arrow_texture != NULL)
+      {
+        SDL_Rect arrow_left_rect = {0, 0, 0, 0};
+        SDL_QueryTexture(arrow_texture, NULL, NULL, &arrow_left_rect.w, &arrow_left_rect.h);
+
+        int pos_w = 100;
+        int pos_h = pos_w * 1.5;
+        SDL_Rect pos_rect = {left - 50 - pos_w, bottom - (h / 2) - (pos_h / 2), pos_w, pos_h};
+
+        SDL_RendererFlip flip = SDL_FLIP_HORIZONTAL;
+
+        SDL_RenderCopyEx(state->renderer, arrow_texture, NULL, &pos_rect, 0, NULL, flip);
+      }
+    }
+
+    if (state->game_entries_len / (state->rows * state->columns) > state->page)
+    {
+      if (arrow_texture != NULL)
+      {
+        SDL_Rect arrow_right_rect = {0, 0, 0, 0};
+        SDL_QueryTexture(arrow_texture, NULL, NULL, &arrow_right_rect.w, &arrow_right_rect.h);
+
+        int pos_w = 100;
+        int pos_h = pos_w * 1.5;
+        SDL_Rect pos_rect = {left + w + 50, bottom - (h / 2) - (pos_h / 2), pos_w, pos_h};
+
+        SDL_RenderCopy(state->renderer, arrow_texture, NULL, &pos_rect);
+      }
+    }
+
+    if (page_text_texture != NULL)
+    {
+      SDL_Rect text_rect = {0, 0, 0, 0};
+      SDL_QueryTexture(page_text_texture, NULL, NULL, &text_rect.w, &text_rect.h);
+      text_rect.x = state->window_w / 2 - text_rect.w / 2;
+      text_rect.y = bottom + ((state->window_h - bottom) / 2) - text_rect.h / 2;
+
+      SDL_RenderCopy(state->renderer, page_text_texture, NULL, &text_rect);
     }
 
     if (game_name_texture != NULL)
@@ -480,7 +520,7 @@ int load_font(State* state, const char* font_path)
       return 1;
     }
 
-    SDL_Surface* run_game_hint_surface = TTF_RenderUTF8_Solid(font_medium, "Starta spel", (SDL_Color){255, 255, 255, 150});
+    SDL_Surface* run_game_hint_surface = TTF_RenderUTF8_Solid(font_medium, "Starta spel", TEXT_COLOR_FADED);
     if (run_game_hint_surface == NULL)
     {
       printf("ERROR: Failed to create surface for run game hint: %s\n", TTF_GetError());
@@ -498,7 +538,7 @@ int load_font(State* state, const char* font_path)
       }
     }
 
-    SDL_Surface* loading_text_surface = TTF_RenderUTF8_Solid(font_big, "LOADING...", TEXT_COLOR);
+    SDL_Surface* loading_text_surface = TTF_RenderUTF8_Solid(font_big, "LADDAR...", TEXT_COLOR);
     if (loading_text_surface == NULL)
     {
       printf("ERROR: Failed to create surface for loading text: %s\n", TTF_GetError());
@@ -536,6 +576,51 @@ int load_font(State* state, const char* font_path)
   }
 
   return 0;
+}
+
+int load_arcade_images(State* state)
+{
+  int failed = 0;
+  
+  printf("Loading arcade images...\n");
+  
+  SDL_Surface* button_accept_surface = IMG_Load("./images/arcade_button_green.png");
+  
+  if (button_accept_surface != NULL)
+  {
+    if ((button_accept_texture = SDL_CreateTextureFromSurface(state->renderer, button_accept_surface)) == NULL)
+    {
+      printf("  ERROR: Creating texture for arcade_button_green failed\n");
+      failed = 1;
+    }
+
+    SDL_FreeSurface(button_accept_surface);
+  }
+  else
+  {
+    printf("  ERROR: Failed to load \"arcade_button_green.png\"\n");
+    failed = 1;
+  }
+
+  SDL_Surface* arrow_surface = IMG_Load("./images/arcade_arrow.png");
+
+  if (arrow_surface != NULL)
+  {
+    if ((arrow_texture = SDL_CreateTextureFromSurface(state->renderer, arrow_surface)) == NULL)
+    {
+      printf("  ERROR: Creating texture for arrow failed\n");
+      failed = 1;
+    }
+
+    SDL_FreeSurface(arrow_surface);
+  }
+  else
+  {
+    printf("  ERROR: Failed to load \"arcade_arrow.png\"\n");
+    failed = 1;
+  }
+
+  return failed;
 }
 
 void free_state(State* state)
@@ -682,6 +767,9 @@ int find_games(State* state)
     }
     
     closedir(dir);
+
+    generate_page_text(state);
+    
     return 0;
   }
   else
@@ -705,77 +793,71 @@ int find_games(State* state)
 DWORD WINAPI start_game_thread(void* data)
 {
   State* state = (State*)data;
-  if (state == NULL) return 0;
+  if (state == NULL)
+  {
+    printf("Error: start_game_thread: state is null\n");
+    return 0;
+  }
 
-  state->input_enabled = 0;
+  set_menu_state(state, LOADING);
   run_selected_game(state);
-  state->input_enabled = 1;
+  set_menu_state(state, GAME_SELECT);
+  
   return 0;
 }
 
 void run_selected_game(State* state)
 {
-  if (state->menu_state == 1)
+  if (state->game_entries != NULL)
   {
-    if (state->game_entries != NULL)
+    int sel_idx = get_real_selection_index(state);
+    if (state->game_entries[sel_idx].exe_path != NULL)
     {
-      int sel_idx = get_real_selection_index(state);
-      if (state->game_entries[sel_idx].exe_path != NULL)
-      {
-        printf("---Launching \"%s\"...---\n", state->game_entries[sel_idx].game_title);
+      printf("---Launching \"%s\"...---\n", state->game_entries[sel_idx].game_title);
         
-        STARTUPINFO si;
-        PROCESS_INFORMATION pi;
+      STARTUPINFO si;
+      PROCESS_INFORMATION pi;
 
-        si.dwX = 0;
-        si.dwY = 0;
-        si.dwXSize = state->window_w;
-        si.dwYSize = state->window_h;
-        si.dwFlags = STARTF_RUNFULLSCREEN;
+      si.dwX = 0;
+      si.dwY = 0;
+      si.dwXSize = state->window_w;
+      si.dwYSize = state->window_h;
+      si.dwFlags = STARTF_RUNFULLSCREEN;
 
-        ZeroMemory(&si, sizeof(si));
-        si.cb = sizeof(si);
-        ZeroMemory(&pi, sizeof(pi));
+      ZeroMemory(&si, sizeof(si));
+      si.cb = sizeof(si);
+      ZeroMemory(&pi, sizeof(pi));
 
-        if (!CreateProcess(
-          NULL,
-          state->game_entries[sel_idx].exe_path,
-          NULL,
-          NULL,
-          FALSE,
-          HIGH_PRIORITY_CLASS | WS_POPUP,
-          NULL,
-          NULL,
-          &si,
-          &pi))
-        {
-          printf("ERROR: Failed to launch game. CreateProcess failed: %lu\n", GetLastError());
-          return;
-        }
-
-        // If game launched
-        state->menu_state = 0;
-        render(state);
-
-        WaitForSingleObject(pi.hProcess, INFINITE);
-        CloseHandle(pi.hProcess);
-        CloseHandle(pi.hThread);
-        
-        state->menu_state = 1;
-
-        printf("\n---\"%s\" exited---\n", state->game_entries[sel_idx].game_title);
-
-        render(state);
-      }
-      else
+      if (!CreateProcess(
+        NULL,
+        state->game_entries[sel_idx].exe_path,
+        NULL,
+        NULL,
+        FALSE,
+        HIGH_PRIORITY_CLASS | WS_POPUP,
+        NULL,
+        NULL,
+        &si,
+        &pi))
       {
-        printf("ERROR: Failed to launch game. Game's exe_path is NULL\n");
+        printf("ERROR: Failed to launch game. CreateProcess failed: %lu\n", GetLastError());
+        return;
       }
+
+      WaitForSingleObject(pi.hProcess, INFINITE);
+      CloseHandle(pi.hProcess);
+      CloseHandle(pi.hThread);
+
+      printf("\n---\"%s\" exited---\n", state->game_entries[sel_idx].game_title);
     }
     else
     {
-      printf("ERROR: Failed to start game. game_entries == NULL\n");
+      printf("ERROR: Failed to launch game. Game's exe_path is NULL\n");
     }
+  }
+  else
+  {
+    printf("ERROR: Failed to start game. game_entries == NULL\n");
   }
 }
 
@@ -812,6 +894,7 @@ void move_select_left(State* state)
   {
     state->page--;
     state->selection.x = state->columns - 1;
+    generate_page_text(state);
   }
   else if (state->selection.x > 0)
   {
@@ -825,6 +908,7 @@ void move_select_right(State* state)
   {
     state->page++;
     state->selection.x = 0;
+    generate_page_text(state);
     
     if ((state->game_entries_len - (state->rows * state->columns * state->page)) / state->columns <= state->selection.y)
     {
@@ -849,13 +933,74 @@ void generate_new_game_name(State* state)
 {
   if (state->game_entries != NULL && state->game_entries_len > 0)
   {
-    // if (game_name_surface != NULL) SDL_FreeSurface(game_name_surface);
     SDL_Surface* game_name_surface = TTF_RenderUTF8_Solid(font_big, state->game_entries[get_real_selection_index(state)].game_title, TEXT_COLOR);
-    if (game_name_surface == NULL) printf("%s\n", TTF_GetError());
+    if (game_name_surface == NULL) printf("ERROR: generate_new_game_name(): %s\n", TTF_GetError());
     
     if (game_name_texture != NULL) SDL_DestroyTexture(game_name_texture);
     game_name_texture = SDL_CreateTextureFromSurface(state->renderer, game_name_surface);
+    if (game_name_texture == NULL) printf("ERROR: generate_new_game_name(): %s\n", SDL_GetError());
     SDL_FreeSurface(game_name_surface);
-    if (game_name_texture == NULL) printf("%s\n", SDL_GetError());
+  }
+}
+
+void generate_page_text(State* state)
+{
+  const int len = 2 + ((state->page / 10) + 1) + (state->game_entries_len / (state->rows * state->columns) + 1) + 1;
+  char* str = calloc(len, sizeof(char));
+
+  sprintf(str, "[%d/%d]", state->page + 1, state->game_entries_len / (state->rows * state->columns) + 1);
+  
+  SDL_Surface* page_text_surface = TTF_RenderUTF8_Solid(font_big, str, TEXT_COLOR_FADED);
+  if (page_text_surface == NULL) printf("ERROR: generate_page_text(): %s\n", TTF_GetError());
+
+  if (page_text_texture != NULL) SDL_DestroyTexture(page_text_texture);
+  page_text_texture = SDL_CreateTextureFromSurface(state->renderer, page_text_surface);
+  if (game_name_texture == NULL) printf("ERROR: generate_page_text(): %s\n", SDL_GetError());
+  SDL_FreeSurface(page_text_surface);
+
+  free(str);
+}
+
+void set_menu_state(State* state, MenuState new_state)
+{
+  switch (new_state)
+  {
+    case LOADING:
+    {
+      if (state != NULL)
+      {
+        state->menu_state = new_state;
+        state->input_enabled = 0;
+        render(state);
+      }
+
+      break;
+    }
+    case GAME_SELECT:
+    {
+      if (state != NULL)
+      {
+        state->menu_state = new_state;
+        state->input_enabled = 1;
+        selection_alpha = 100;
+        render(state);
+      }
+
+      break;
+    }
+    case SPLASH:
+    {
+      if (state != NULL)
+      {
+        state->menu_state = new_state;
+        state->input_enabled = 0;
+        selection_alpha = 0;
+        // Splash screen should render on its own
+      }
+    }
+    default:
+    {
+      break;
+    }
   }
 }
