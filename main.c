@@ -48,6 +48,8 @@ int main(int argc, char* argv[])
   SDL_VERSION(&wm_info.version);
   SDL_GetWindowWMInfo(state.window, &wm_info);
   state.window_handle = wm_info.info.win.window;
+
+  SetFocus(state.window_handle);
   
   if (load_font(&state, "./font/font.ttf") == 1) return EXIT_FAILURE;
 
@@ -840,6 +842,8 @@ void run_selected_game(State* state)
         printf("ERROR: Failed to launch game. CreateProcess failed: %lu\n", GetLastError());
         return;
       }
+
+      SetFocus(pi.hProcess);
 
       WaitForSingleObject(pi.hProcess, INFINITE);
       CloseHandle(pi.hProcess);
