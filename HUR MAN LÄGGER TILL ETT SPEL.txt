@@ -22,5 +22,4 @@ Bilden får gärna vara i så liten storlek som möjligt så att den inte tar up
 
 Grattis! Du har nu lagt till ett spel i Ädelfors Arcade!
 
-Kontakta Hampus Selander från IT-Spåret om du stöter på problem:
-hampus.selander@adelfors.nu
+Kontakta Hampus Selander från IT-Spåret om du stöter på problem: hampus.selander@adelfors.nu
