@@ -14,6 +14,7 @@
 #define TICK_RATE (1000 / 30)
 
 #define ARCADE_UI_EDGE_MARGIN 100
+#define ARCADE_GAME_BOX_PADDING 25
 
 const SDL_Color TEXT_COLOR = {255, 255, 255, 255};
 const SDL_Color TEXT_COLOR_FADED = {255, 255, 255, 150};
@@ -38,6 +39,7 @@ unsigned char selection_alpha = 0;
 typedef struct {
   char* game_title;
   char* exe_path;
+  SDL_Texture* game_image;
 } GameEntry;
 
 typedef struct {

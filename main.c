@@ -1,4 +1,7 @@
 #include "main.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 int main(int argc, char* argv[])
 {
@@ -396,13 +399,29 @@ void render_game_select_ui(State* state)
           SDL_SetRenderDrawColor(state->renderer, FOREGROUND_COLOR.r, FOREGROUND_COLOR.g, FOREGROUND_COLOR.b, FOREGROUND_COLOR.a);
         }
       
-        SDL_Rect rect = (SDL_Rect){
+        SDL_Rect rect = {
           left + (w / state->columns) * column,
           top + (h / state->rows) * row,
           w / state->columns,
           h / state->rows,
         };
         SDL_RenderFillRect(state->renderer, &rect);
+
+        if (state->game_entries[count + ((state->rows * state->columns) * state->page)].game_image != NULL)
+        {
+          SDL_Texture* image_texture = state->game_entries[count + ((state->rows * state->columns) * state->page)].game_image;
+          SDL_Rect image_rect = {0, 0, 0, 0};
+          SDL_QueryTexture(image_texture, NULL, NULL, &image_rect.w, &image_rect.h);
+
+          SDL_Rect pos_rect = {
+            left + (w / state->columns) * column + ARCADE_GAME_BOX_PADDING,
+            top + (h / state->rows) * row + ARCADE_GAME_BOX_PADDING,
+            w / state->columns - ARCADE_GAME_BOX_PADDING * 2,
+            h / state->rows - ARCADE_GAME_BOX_PADDING * 2
+          };
+
+          SDL_RenderCopy(state->renderer, image_texture, NULL, &pos_rect);
+        }
 
         count++;
       }
@@ -460,7 +479,7 @@ void render_game_select_ui(State* state)
       }
     }
 
-    if (page_text_texture != NULL)
+    if (state->game_entries_len > state->rows * state->columns && page_text_texture != NULL)
     {
       SDL_Rect text_rect = {0, 0, 0, 0};
       SDL_QueryTexture(page_text_texture, NULL, NULL, &text_rect.w, &text_rect.h);
@@ -653,6 +672,11 @@ void free_game_entries(State* state)
           free(state->game_entries[i].exe_path);
           state->game_entries[i].exe_path = NULL;
         }
+        if (state->game_entries[i].game_image != NULL)
+        {
+          SDL_DestroyTexture(state->game_entries[i].game_image);
+          state->game_entries[i].game_image = NULL;
+        }
       }
   
       free (state->game_entries);
@@ -693,6 +717,8 @@ int find_games(State* state)
       strcpy(path, GAMES_PATH);
       strcat(path, "/");
       strcat(path, dirp->d_name);
+
+      int path_len = strlen(path);
         
       struct stat s;
       if (stat(path, &s) == 0)
@@ -705,15 +731,18 @@ int find_games(State* state)
           
           if (game_dir != NULL)
           {
+            char exe_found = 0;
+            char* icon_name = NULL;
+            
             struct dirent* dirp2;
             while((dirp2 = readdir(game_dir)) != NULL)
             {
               if (strcmp(dirp2->d_name, ".") == 0 || strcmp(dirp2->d_name, "..") == 0 || strcmp(dirp2->d_name, "desktop.ini") == 0) continue;
               // Ignore some potential .exes
-              if (strcmp(dirp->d_name, "UnityCrashHandler64.exe") == 0) continue;
+              if (strcmp(dirp->d_name, "UnityCrashHandler64.exe\0") == 0) continue;
               
               int name_len = strlen(dirp2->d_name);
-              if (name_len > 4)
+              if (name_len > 4 && exe_found == 0)
               {
                 if (dirp2->d_name[name_len - 4] == '.' && dirp2->d_name[name_len - 3] == 'e' && dirp2->d_name[name_len - 2] == 'x' && dirp2->d_name[name_len - 1] == 'e')
                 {
@@ -727,10 +756,11 @@ int find_games(State* state)
                     printf("  ERROR: Failed to reallocate memory for game_entries\n");
                     break;
                   }
+                  state->game_entries[state->game_entries_len - 1].game_image = NULL;
                   state->game_entries[state->game_entries_len - 1].game_title = malloc(dirp_name_len + 1);
                   strcpy(state->game_entries[state->game_entries_len - 1].game_title, dirp->d_name);
 
-                  char* exe_path = malloc(strlen(path) + name_len + 3);
+                  char* exe_path = malloc(path_len + name_len + 3);
                   if (exe_path == NULL)
                   {
                     printf("  ERROR: Failed to allocate memory for exe_path\n");
@@ -745,10 +775,65 @@ int find_games(State* state)
                   strcat(exe_path, "\"");
 
                   state->game_entries[state->game_entries_len - 1].exe_path = exe_path;
+                  exe_found = 1;
 
                   printf("    %s\n", exe_path);
+
+                  if (icon_name != NULL)
+                  {
+                    char* icon_path = malloc(path_len + strlen(icon_name) + 1);
+                    sprintf(icon_path, "%s/%s", path, icon_name);
+
+                    SDL_Surface* image_surface = IMG_Load(icon_path);
+                    SDL_Texture* image_texture;
+
+                    if (image_surface != NULL)
+                    {
+                      image_texture = SDL_CreateTextureFromSurface(state->renderer, image_surface);
+                      if (image_texture != NULL)
+                      {
+                        state->game_entries[state->game_entries_len - 1].game_image = image_texture;
+                        printf("    Icon found\n");
+                      }
+
+                      SDL_FreeSurface(image_surface);
+                    }
+
+                    free(icon_path);
+                  }
                   
-                  break;
+                  continue;
+                }
+                else if (strcmp(dirp2->d_name, "game_icon.png\0") == 0 || strcmp(dirp2->d_name, "game_icon.jpg\0") == 0)
+                {
+                  icon_name = malloc(14);
+                  strcpy(icon_name, dirp2->d_name);
+                  
+                  if (exe_found == 1)
+                  {
+                    char* icon_path = malloc(path_len + strlen(icon_name) + 1);
+                    sprintf(icon_path, "%s/%s", path, icon_name);
+
+                    SDL_Surface* image_surface = IMG_Load(icon_path);
+                    SDL_Texture* image_texture;
+
+                    if (image_surface != NULL)
+                    {
+                      image_texture = SDL_CreateTextureFromSurface(state->renderer, image_surface);
+                      if (image_texture != NULL)
+                      {
+                        state->game_entries[state->game_entries_len - 1].game_image = image_texture;
+                        printf("    Icon found\n");
+                      }
+                      else printf("  ERROR: image_texture null: %s\n", SDL_GetError());
+
+                      SDL_FreeSurface(image_surface);
+                    }
+                    else printf("  ERROR: image_surface null: %s\n", SDL_GetError());
+                    
+                    free(icon_name);
+                    free(icon_path);
+                  }
                 }
               }
             }
