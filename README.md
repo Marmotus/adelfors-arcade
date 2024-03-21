@@ -2,8 +2,6 @@
 Ädelfors Arcade is a simple program written in C that aims to emulate an arcade experience for a Windows computer. It detects games in its "games" folder and displays them in the user interface, from where they can be launched.
 
 # How to compile
-If you wish to compile the program yourself:
-
 SDL2 is required. To install SDL2:
 
 1. Install MSYS2 at https://www.msys2.org/

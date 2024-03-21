@@ -20,7 +20,7 @@ const SDL_Color TEXT_COLOR = {255, 255, 255, 255};
 const SDL_Color TEXT_COLOR_FADED = {255, 255, 255, 150};
 const SDL_Color BACKGROUND_COLOR = {28, 0, 0, 255};
 const SDL_Color FOREGROUND_COLOR = {42, 28, 28, 255};
-const SDL_Color SELECTION_COLOR = {80, 80, 80, 255};
+const SDL_Color SELECTION_COLOR = {60, 60, 60, 255};
 
 TTF_Font* font_big = NULL;
 TTF_Font* font_medium = NULL;

@@ -1,27 +1,10 @@
 #include "main.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 
 int main(int argc, char* argv[])
 {
   printf("Starting Adelfors Arcade...\n");
 
-  State state = {NULL, NULL};
-  state.game_entries = NULL;
-  state.game_entries_len = 0;
-  state.rows = 2;
-  state.columns = 4;
-  state.selection = (Position){0, 0};
-  state.page = 0;
-  state.window_handle = NULL;
-  state.game_process_handle = 0;
-  state.game_entries_len = 0;
-  state.input_enabled = 0;
-  state.joystick = NULL;
-  state.window_w = 0;
-  state.window_h = 0;
-  state.menu_state = LOADING;
+  State state = { .rows = 2, .columns = 4};
 
   printf("Initializing SDL...\n");
   if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_JOYSTICK))
@@ -53,6 +36,8 @@ int main(int argc, char* argv[])
   state.window_handle = wm_info.info.win.window;
 
   SetFocus(state.window_handle);
+  SDL_ShowCursor(SDL_DISABLE);
+  // ShowCursor(0);
   
   if (load_font(&state, "./font/font.ttf") == 1) return EXIT_FAILURE;
 
@@ -86,12 +71,16 @@ int main(int argc, char* argv[])
   
   while (should_quit == 0)
   {
-    if (state.menu_state != 0 && state.game_process_handle != NULL)
+    if (state.menu_state != LOADING && state.game_process_handle != NULL)
     {
       CloseHandle(state.game_process_handle);
       state.game_process_handle = NULL;
       if (state.window_handle != NULL) SetFocus(state.window_handle);
       else printf("ERROR: Window handle null. Can't set focus\n");
+    }
+    else if (state.game_process_handle != NULL)
+    {
+      SetCursorPos(state.window_w, 0);
     }
     
     should_quit = handle_events(&state);
@@ -742,9 +731,9 @@ int find_games(State* state)
               if (strcmp(dirp->d_name, "UnityCrashHandler64.exe\0") == 0) continue;
               
               int name_len = strlen(dirp2->d_name);
-              if (name_len > 4 && exe_found == 0)
+              if (name_len > 4)
               {
-                if (dirp2->d_name[name_len - 4] == '.' && dirp2->d_name[name_len - 3] == 'e' && dirp2->d_name[name_len - 2] == 'x' && dirp2->d_name[name_len - 1] == 'e')
+                if (dirp2->d_name[name_len - 4] == '.' && dirp2->d_name[name_len - 3] == 'e' && dirp2->d_name[name_len - 2] == 'x' && dirp2->d_name[name_len - 1] == 'e' && exe_found == 0)
                 {
                   printf("  [%s]\n", dirp->d_name);
 
@@ -799,7 +788,10 @@ int find_games(State* state)
                       SDL_FreeSurface(image_surface);
                     }
 
+                    free(icon_name);
+                    icon_name = NULL;
                     free(icon_path);
+                    icon_path = NULL;
                   }
                   
                   continue;
@@ -832,7 +824,9 @@ int find_games(State* state)
                     else printf("  ERROR: image_surface null: %s\n", SDL_GetError());
                     
                     free(icon_name);
+                    icon_name = NULL;
                     free(icon_path);
+                    icon_path = NULL;
                   }
                 }
               }
