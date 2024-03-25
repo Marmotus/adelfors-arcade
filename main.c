@@ -456,7 +456,7 @@ void render_game_select_ui(State* state)
       }
     }
 
-    if (state->game_entries_len / (state->rows * state->columns) > state->page)
+    if ((state->game_entries_len - 1) / (state->rows * state->columns) > state->page)
     {
       if (arrow_texture != NULL)
       {
@@ -1019,7 +1019,7 @@ void move_select_left(State* state)
 
 void move_select_right(State* state)
 {
-  if (state->page < state->game_entries_len / (state->rows * state->columns) && state->selection.x == state->columns - 1)
+  if (state->page < (state->game_entries_len - 1) / (state->rows * state->columns) && state->selection.x == state->columns - 1)
   {
     state->page++;
     state->selection.x = 0;
