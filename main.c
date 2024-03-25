@@ -4,7 +4,7 @@ int main(int argc, char* argv[])
 {
   printf("Starting Adelfors Arcade...\n");
 
-  State state = { .rows = 2, .columns = 4};
+  State state = { .rows = 2, .columns = 5};
 
   printf("Initializing SDL...\n");
   if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_JOYSTICK))
