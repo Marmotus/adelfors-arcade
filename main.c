@@ -801,69 +801,41 @@ int find_games(State* state)
                   exe_found = 1;
 
                   printf("    %s\n", exe_path);
-
-                  if (icon_name != NULL)
-                  {
-                    char* icon_path = malloc(path_len + strlen(icon_name) + 1);
-                    sprintf(icon_path, "%s/%s", path, icon_name);
-
-                    SDL_Surface* image_surface = IMG_Load(icon_path);
-                    SDL_Texture* image_texture;
-
-                    if (image_surface != NULL)
-                    {
-                      image_texture = SDL_CreateTextureFromSurface(state->renderer, image_surface);
-                      if (image_texture != NULL)
-                      {
-                        state->game_entries[state->game_entries_len - 1].game_image = image_texture;
-                        printf("    Icon found\n");
-                      }
-
-                      SDL_FreeSurface(image_surface);
-                    }
-
-                    free(icon_name);
-                    icon_name = NULL;
-                    free(icon_path);
-                    icon_path = NULL;
-                  }
-                  
-                  continue;
                 }
                 else if (strcmp(dirp2->d_name, "game_icon.png\0") == 0 || strcmp(dirp2->d_name, "game_icon.jpg\0") == 0)
                 {
                   icon_name = malloc(14);
                   strcpy(icon_name, dirp2->d_name);
-                  
-                  if (exe_found == 1)
-                  {
-                    char* icon_path = malloc(path_len + strlen(icon_name) + 1);
-                    sprintf(icon_path, "%s/%s", path, icon_name);
-
-                    SDL_Surface* image_surface = IMG_Load(icon_path);
-                    SDL_Texture* image_texture;
-
-                    if (image_surface != NULL)
-                    {
-                      image_texture = SDL_CreateTextureFromSurface(state->renderer, image_surface);
-                      if (image_texture != NULL)
-                      {
-                        state->game_entries[state->game_entries_len - 1].game_image = image_texture;
-                        printf("    Icon found\n");
-                      }
-                      else printf("  ERROR: image_texture null: %s\n", SDL_GetError());
-
-                      SDL_FreeSurface(image_surface);
-                    }
-                    else printf("  ERROR: image_surface null: %s\n", SDL_GetError());
-                    
-                    free(icon_name);
-                    icon_name = NULL;
-                    free(icon_path);
-                    icon_path = NULL;
-                  }
                 }
               }
+            }
+
+            if (exe_found == 1 && icon_name != NULL)
+            {
+              char* icon_path = malloc(path_len + strlen(icon_name) + 1);
+              sprintf(icon_path, "%s/%s", path, icon_name);
+
+              SDL_Surface* image_surface = IMG_Load(icon_path);
+              SDL_Texture* image_texture;
+
+              if (image_surface != NULL)
+              {
+                image_texture = SDL_CreateTextureFromSurface(state->renderer, image_surface);
+                if (image_texture != NULL)
+                {
+                  state->game_entries[state->game_entries_len - 1].game_image = image_texture;
+                  printf("    Icon found\n");
+                }
+                else printf("  ERROR: image_texture null: %s\n", SDL_GetError());
+
+                SDL_FreeSurface(image_surface);
+              }
+              else printf("  ERROR: image_surface null: %s\n", SDL_GetError());
+
+              free(icon_name);
+              icon_name = NULL;
+              free(icon_path);
+              icon_path = NULL;
             }
 
             closedir(game_dir);
@@ -880,7 +852,11 @@ int find_games(State* state)
     
     closedir(dir);
 
-    generate_page_text(state);
+    if (state->game_entries_len > 0)
+    {
+      generate_new_game_name(state);
+      generate_page_text(state);
+    }
     
     return 0;
   }
