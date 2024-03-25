@@ -16,10 +16,12 @@
 #define ARCADE_UI_EDGE_MARGIN 100
 #define ARCADE_GAME_BOX_PADDING 25
 
+#define VERSION_STRING_LITERAL "v0.9"
+
 const SDL_Color TEXT_COLOR = {255, 255, 255, 255};
-const SDL_Color TEXT_COLOR_FADED = {255, 255, 255, 150};
-const SDL_Color BACKGROUND_COLOR = {28, 0, 0, 255};
-const SDL_Color FOREGROUND_COLOR = {42, 28, 28, 255};
+const SDL_Color TEXT_COLOR_FADED = {255, 255, 255, 120};
+const SDL_Color BACKGROUND_COLOR = {0, 0, 0, 255};
+const SDL_Color FOREGROUND_COLOR = {28, 28, 28, 255};
 const SDL_Color SELECTION_COLOR = {60, 60, 60, 255};
 
 TTF_Font* font_big = NULL;
@@ -30,11 +32,10 @@ SDL_Texture* run_game_hint_texture = NULL;
 SDL_Texture* loading_text_texture = NULL;
 SDL_Texture* no_games_text_texure = NULL;
 SDL_Texture* page_text_texture = NULL;
+SDL_Texture* version_number_texture = NULL;
 
 SDL_Texture* button_accept_texture = NULL;
 SDL_Texture* arrow_texture = NULL;
-
-unsigned char selection_alpha = 0;
 
 typedef struct {
   char* game_title;
@@ -89,6 +90,7 @@ void render(State* state);
 void render_loading_ui(State* state);
 void render_game_select_ui(State* state);
 void render_shutdown_ui(State* state);
+void render_splash_ui(State* state);
 
 void move_select_up(State* state);
 void move_select_down(State* state);

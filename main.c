@@ -36,6 +36,7 @@ int main(int argc, char* argv[])
   state.window_handle = wm_info.info.win.window;
 
   SetFocus(state.window_handle);
+  SetCursorPos(state.window_w, 0);
   SDL_ShowCursor(SDL_DISABLE);
   // ShowCursor(0);
   
@@ -77,10 +78,6 @@ int main(int argc, char* argv[])
       state.game_process_handle = NULL;
       if (state.window_handle != NULL) SetFocus(state.window_handle);
       else printf("ERROR: Window handle null. Can't set focus\n");
-    }
-    else if (state.game_process_handle != NULL)
-    {
-      SetCursorPos(state.window_w, 0);
     }
     
     should_quit = handle_events(&state);
@@ -280,6 +277,11 @@ int handle_events(State* state)
             {
               // Start game!
               if (state->game_process_handle == NULL) state->game_process_handle = CreateThread(NULL, 0, start_game_thread, state, 0, NULL);
+              else printf("ERROR: Failed to start game. game_process_handle is not null\n");
+            }
+            else if (state->menu_state == SPLASH)
+            {
+              set_menu_state(state, GAME_SELECT);
             }
 
             break;
@@ -339,6 +341,7 @@ void render(State* state)
 
   if (state->menu_state == LOADING) render_loading_ui(state);
   else if (state->menu_state == GAME_SELECT) render_game_select_ui(state);
+  else if (state->menu_state == SPLASH) render_splash_ui(state);
   else if (state->menu_state == SHUTDOWN) render_shutdown_ui(state);
 
   SDL_RenderPresent(state->renderer);
@@ -507,6 +510,19 @@ void render_shutdown_ui(State* state)
   SDL_RenderFillRect(state->renderer, &rect);
 }
 
+void render_splash_ui(State* state)
+{
+  if (version_number_texture != NULL)
+  {
+    SDL_Rect text_rect = {0, 0, 0, 0};
+    SDL_QueryTexture(version_number_texture, NULL, NULL, &text_rect.w, &text_rect.h);
+    text_rect.x = state->window_w - text_rect.w - 25;
+    text_rect.y = state->window_h - text_rect.h - 25;
+
+    SDL_RenderCopy(state->renderer, version_number_texture, NULL, &text_rect);
+  }
+}
+
 int load_font(State* state, const char* font_path)
 {
   printf("Loading font...\n");
@@ -563,7 +579,7 @@ int load_font(State* state, const char* font_path)
       }
     }
 
-    SDL_Surface* no_games_text_surface = TTF_RenderUTF8_Solid(font_big, "No games found", TEXT_COLOR);
+    SDL_Surface* no_games_text_surface = TTF_RenderUTF8_Solid(font_big, "Inga spel hittades", TEXT_COLOR);
     if (no_games_text_surface == NULL)
     {
       printf("ERROR: Failed to create surface for no games text: %s\n", TTF_GetError());
@@ -577,6 +593,24 @@ int load_font(State* state, const char* font_path)
       if (no_games_text_texure == NULL)
       {
         printf("ERROR: Failed to create texture for no games text: %s\n", SDL_GetError());
+        return 1;
+      }
+    }
+    
+    SDL_Surface* version_number_surface = TTF_RenderUTF8_Solid(font_medium, VERSION_STRING_LITERAL, TEXT_COLOR_FADED);
+    if (version_number_surface == NULL)
+    {
+      printf("ERROR: Failed to create surface for version number text: %s\n", TTF_GetError());
+      return 1;
+    }
+    else
+    {
+      if (version_number_texture != NULL) SDL_DestroyTexture(version_number_texture);
+      version_number_texture = SDL_CreateTextureFromSurface(state->renderer, version_number_surface);
+      SDL_FreeSurface(version_number_surface);
+      if (version_number_texture == NULL)
+      {
+        printf("ERROR: Failed to create texture for version number text: %s\n", SDL_GetError());
         return 1;
       }
     }
@@ -923,6 +957,7 @@ void run_selected_game(State* state)
       }
 
       SetFocus(pi.hProcess);
+      SetCursorPos(state->window_w, 0);
 
       WaitForSingleObject(pi.hProcess, INFINITE);
       CloseHandle(pi.hProcess);
@@ -1065,7 +1100,6 @@ void set_menu_state(State* state, MenuState new_state)
       {
         state->menu_state = new_state;
         state->input_enabled = 1;
-        selection_alpha = 100;
         render(state);
       }
 
@@ -1076,9 +1110,8 @@ void set_menu_state(State* state, MenuState new_state)
       if (state != NULL)
       {
         state->menu_state = new_state;
-        state->input_enabled = 0;
-        selection_alpha = 0;
-        // Splash screen should render on its own
+        state->input_enabled = 1;
+        render(state);
       }
     }
     default:
