@@ -367,7 +367,7 @@ void render_game_select_ui(State* state)
 {
   // Pre-calculate some values to make it easier to render game boxes
   const int left = 200;
-  const int top = 220;
+  const int top = 200;
   const int bottom = (state->window_h) - 180;
   const int w = state->window_w - (left * 2);
   const int h = bottom - top;
