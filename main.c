@@ -368,7 +368,7 @@ void render_game_select_ui(State* state)
   // Pre-calculate some values to make it easier to render game boxes
   const int left = 200;
   const int top = 200;
-  const int bottom = (state->window_h) - 180;
+  const int bottom = (state->window_h) - 160;
   const int w = state->window_w - (left * 2);
   const int h = bottom - top;
   
@@ -486,7 +486,7 @@ void render_game_select_ui(State* state)
       SDL_Rect text_rect = {0, 0, 0, 0};
       SDL_QueryTexture(game_name_texture, NULL, NULL, &text_rect.w, &text_rect.h);
       text_rect.x = state->window_w / 2 - text_rect.w / 2;
-      text_rect.y = 50 + text_rect.h;
+      text_rect.y = top / 2 - text_rect.h / 2;
     
       SDL_RenderCopy(state->renderer, game_name_texture, NULL, &text_rect);
     }
