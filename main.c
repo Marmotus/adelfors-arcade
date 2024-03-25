@@ -58,8 +58,6 @@ int main(int argc, char* argv[])
     printf("Error finding games\n");
   }
 
-  generate_new_game_name(&state);
-
   char should_quit = 0;
 
   printf("Beginning loop...\n");
