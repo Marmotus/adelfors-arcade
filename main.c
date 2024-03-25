@@ -4,7 +4,7 @@ int main(int argc, char* argv[])
 {
   printf("Starting Adelfors Arcade...\n");
 
-  State state = { .rows = 2, .columns = 5};
+  State state = { .rows = 2, .columns = 4};
 
   printf("Initializing SDL...\n");
   if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_JOYSTICK))
@@ -367,8 +367,8 @@ void render_game_select_ui(State* state)
 {
   // Pre-calculate some values to make it easier to render game boxes
   const int left = 200;
-  const int top = 250;
-  const int bottom = (state->window_h) - 200;
+  const int top = 220;
+  const int bottom = (state->window_h) - 180;
   const int w = state->window_w - (left * 2);
   const int h = bottom - top;
   
