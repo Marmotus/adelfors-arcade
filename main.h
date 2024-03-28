@@ -11,18 +11,22 @@
 
 
 
-#define TICK_RATE (1000 / 30)
+#define TARGET_FPS 30
+#define TICK_RATE (1000.0f / (int)TARGET_FPS)
+#define IDLE_TIMEOUT_LIMIT (TICK_RATE * TARGET_FPS * 180)
 
 #define ARCADE_UI_EDGE_MARGIN 100
 #define ARCADE_GAME_BOX_PADDING 25
 
-#define VERSION_STRING_LITERAL "v0.9"
+#define VERSION_STRING_LITERAL "v0.10"
 
 const SDL_Color TEXT_COLOR = {255, 255, 255, 255};
 const SDL_Color TEXT_COLOR_FADED = {255, 255, 255, 120};
 const SDL_Color BACKGROUND_COLOR = {0, 0, 0, 255};
 const SDL_Color FOREGROUND_COLOR = {28, 28, 28, 255};
 const SDL_Color SELECTION_COLOR = {60, 60, 60, 255};
+
+double timer = 0.0f;
 
 TTF_Font* font_big = NULL;
 TTF_Font* font_medium = NULL;
@@ -33,6 +37,8 @@ SDL_Texture* loading_text_texture = NULL;
 SDL_Texture* no_games_text_texure = NULL;
 SDL_Texture* page_text_texture = NULL;
 SDL_Texture* version_number_texture = NULL;
+SDL_Texture* splash_texture = NULL;
+SDL_Texture* any_button_text_texture = NULL;
 
 SDL_Texture* button_accept_texture = NULL;
 SDL_Texture* arrow_texture = NULL;
@@ -66,6 +72,7 @@ typedef struct {
   int columns;
   Position selection;
   int page;
+  int pages;
   GameEntry* game_entries;
   int game_entries_len;
   char input_enabled;

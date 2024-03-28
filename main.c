@@ -4,7 +4,7 @@ int main(int argc, char* argv[])
 {
   printf("Starting Adelfors Arcade...\n");
 
-  State state = { .rows = 2, .columns = 4};
+  State state = { .rows = 2, .columns = 4 };
 
   printf("Initializing SDL...\n");
   if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_JOYSTICK))
@@ -66,10 +66,12 @@ int main(int argc, char* argv[])
   SDL_EventState(SDL_SYSWMEVENT, SDL_IGNORE);
   SDL_EventState(SDL_MOUSEMOTION, SDL_IGNORE);
 
-  set_menu_state(&state, GAME_SELECT);
+  set_menu_state(&state, SPLASH);
   
   while (should_quit == 0)
   {
+    should_quit = handle_events(&state);
+    
     if (state.menu_state != LOADING && state.game_process_handle != NULL)
     {
       CloseHandle(state.game_process_handle);
@@ -77,8 +79,17 @@ int main(int argc, char* argv[])
       if (state.window_handle != NULL) SetFocus(state.window_handle);
       else printf("ERROR: Window handle null. Can't set focus\n");
     }
-    
-    should_quit = handle_events(&state);
+
+    if (state.menu_state == GAME_SELECT)
+    {
+      timer += TICK_RATE;
+
+      if (timer >= IDLE_TIMEOUT_LIMIT)
+      {
+        set_menu_state(&state, SPLASH);
+        timer = 0;
+      }
+    }
 
     // Limit loop frequency to leave more resources for the actual games and to save on electricity
     SDL_Delay(TICK_RATE);
@@ -91,6 +102,8 @@ int main(int argc, char* argv[])
   if (button_accept_texture != NULL) SDL_DestroyTexture(button_accept_texture);
   if (page_text_texture != NULL) SDL_DestroyTexture(page_text_texture);
   if (arrow_texture != NULL) SDL_DestroyTexture(arrow_texture);
+  if (version_number_texture != NULL) SDL_DestroyTexture(version_number_texture);
+  if (splash_texture != NULL) SDL_DestroyTexture(splash_texture);
   
   if (font_big != NULL) TTF_CloseFont(font_big);
   if (font_medium != NULL) TTF_CloseFont(font_medium);
@@ -112,6 +125,7 @@ int handle_events(State* state)
 {
   char should_quit = 0;
   char should_render = 0;
+  char remove_splash = 0;
 
   const Uint8* keyboard_state = SDL_GetKeyboardState(NULL);
   
@@ -134,6 +148,13 @@ int handle_events(State* state)
         if (event.jaxis.value < -3200 || event.jaxis.value > 3200)
         {
           int old_index = get_real_selection_index(state);
+
+          if (state->menu_state == GAME_SELECT) timer = 0;
+          else if (state->menu_state == SPLASH)
+          {
+            set_menu_state(state, GAME_SELECT);
+            break;
+          }
           
           // Left-right
           if (event.jaxis.axis == 0)
@@ -174,6 +195,13 @@ int handle_events(State* state)
 
       case SDL_JOYBUTTONDOWN:
       {
+        if (state->menu_state == GAME_SELECT) timer = 0;
+        else if (state->menu_state == SPLASH)
+        {
+          remove_splash = 1;
+          break;
+        }
+
         switch (event.jbutton.button)
         {
           // Pink button
@@ -232,6 +260,13 @@ int handle_events(State* state)
       }
       case SDL_KEYDOWN:
       {
+        if (state->menu_state == GAME_SELECT) timer = 0;
+        else if (state->menu_state == SPLASH)
+        {
+          remove_splash = 1;
+          break;
+        }
+        
         int old_index = get_real_selection_index(state);
         
         switch (event.key.keysym.scancode)
@@ -327,7 +362,12 @@ int handle_events(State* state)
     }
   }
 
-  if (should_render == 1) render(state);
+  // Doing it this way to cancel out other inputs on the same frame
+  if (remove_splash)
+  {
+    set_menu_state(state, GAME_SELECT);
+  }
+  else if (should_render == 1) render(state);
   
   return should_quit;
 }
@@ -365,10 +405,14 @@ void render_game_select_ui(State* state)
 {
   // Pre-calculate some values to make it easier to render game boxes
   const int left = 200;
-  const int top = 200;
-  const int bottom = (state->window_h) - 160;
+  // const int top = 200;
+  // const int bottom = (state->window_w - left * 2) * 0.79365f;
   const int w = state->window_w - (left * 2);
-  const int h = bottom - top;
+  const int h = (w * 0.79365f) - ((ARCADE_GAME_BOX_PADDING * 2) + (state->rows * ARCADE_GAME_BOX_PADDING) + (state->columns * ARCADE_GAME_BOX_PADDING));
+  const int top = state->window_h / 2 - h / 2;
+  const int bottom = top + h;
+  // const int bottom = top + (w * 0.79365f) - ARCADE_GAME_BOX_PADDING * 2 * state->columns * state->rows;
+  // const int h = bottom - top;
   
   if (state->game_entries != NULL && state->game_entries_len > 0)
   {
@@ -510,6 +554,39 @@ void render_shutdown_ui(State* state)
 
 void render_splash_ui(State* state)
 {
+  SDL_SetRenderDrawColor(state->renderer, 255, 255, 255, 255);
+  SDL_RenderClear(state->renderer);
+  
+  if (splash_texture != NULL)
+  {
+    SDL_Rect rect = {0, 0, 0, 0};
+    SDL_QueryTexture(splash_texture, NULL, NULL, &rect.w, &rect.h);
+
+    double h_difference = (double)rect.h / (double)rect.w;
+    int pos_w;
+    int pos_h;
+
+    if (rect.w > rect.h)
+    {
+      pos_w = state->window_w / 1.1f;
+      pos_h = (int)(pos_w * h_difference);
+    }
+    else if (rect.h > rect.w)
+    {
+      pos_h = state->window_h / 1.1f;
+      pos_w = (int)(pos_h * h_difference);
+    }
+    else
+    {
+      pos_w = state->window_w;
+      pos_h = pos_w;
+    }
+    
+    SDL_Rect pos_rect = {state->window_w / 2 - pos_w / 2, state->window_h / 2 - pos_h / 2, pos_w, pos_h};
+
+    SDL_RenderCopy(state->renderer, splash_texture, NULL, &pos_rect);
+  }
+  
   if (version_number_texture != NULL)
   {
     SDL_Rect text_rect = {0, 0, 0, 0};
@@ -518,6 +595,16 @@ void render_splash_ui(State* state)
     text_rect.y = state->window_h - text_rect.h - 25;
 
     SDL_RenderCopy(state->renderer, version_number_texture, NULL, &text_rect);
+  }
+
+  if (any_button_text_texture != NULL)
+  {
+    SDL_Rect text_rect = {0, 0, 0, 0};
+    SDL_QueryTexture(any_button_text_texture, NULL, NULL, &text_rect.w, &text_rect.h);
+    text_rect.x = state->window_w / 2 - text_rect.w / 2;
+    text_rect.y = 75;
+
+    SDL_RenderCopy(state->renderer, any_button_text_texture, NULL, &text_rect);
   }
 }
 
@@ -530,21 +617,21 @@ int load_font(State* state, const char* font_path)
     font_big = TTF_OpenFont(font_path, 48);
     if (font_big == NULL)
     {
-      printf("ERROR: Failed loading font\n");
+      printf("  ERROR: Failed loading font\n");
       return 1;
     }
 
     font_medium = TTF_OpenFont(font_path, 32);
     if (font_medium == NULL)
     {
-      printf("ERROR: Failed loading font\n");
+      printf("  ERROR: Failed loading font\n");
       return 1;
     }
 
     SDL_Surface* run_game_hint_surface = TTF_RenderUTF8_Solid(font_medium, "Starta spel", TEXT_COLOR_FADED);
     if (run_game_hint_surface == NULL)
     {
-      printf("ERROR: Failed to create surface for run game hint: %s\n", TTF_GetError());
+      printf("  ERROR: Failed to create surface for run game hint: %s\n", TTF_GetError());
       return 1;
     }
     else
@@ -554,7 +641,7 @@ int load_font(State* state, const char* font_path)
       SDL_FreeSurface(run_game_hint_surface);
       if (run_game_hint_texture == NULL)
       {
-        printf("ERROR: Failed to create texture for run game hint: %s\n", SDL_GetError());
+        printf("  ERROR: Failed to create texture for run game hint: %s\n", SDL_GetError());
         return 1;
       }
     }
@@ -562,7 +649,7 @@ int load_font(State* state, const char* font_path)
     SDL_Surface* loading_text_surface = TTF_RenderUTF8_Solid(font_big, "LADDAR...", TEXT_COLOR);
     if (loading_text_surface == NULL)
     {
-      printf("ERROR: Failed to create surface for loading text: %s\n", TTF_GetError());
+      printf("  ERROR: Failed to create surface for loading text: %s\n", TTF_GetError());
       return 1;
     }
     else
@@ -572,7 +659,7 @@ int load_font(State* state, const char* font_path)
       SDL_FreeSurface(loading_text_surface);
       if (loading_text_texture == NULL)
       {
-        printf("ERROR: Failed to create texture for loading text: %s\n", SDL_GetError());
+        printf("  ERROR: Failed to create texture for loading text: %s\n", SDL_GetError());
         return 1;
       }
     }
@@ -580,7 +667,7 @@ int load_font(State* state, const char* font_path)
     SDL_Surface* no_games_text_surface = TTF_RenderUTF8_Solid(font_big, "Inga spel hittades", TEXT_COLOR);
     if (no_games_text_surface == NULL)
     {
-      printf("ERROR: Failed to create surface for no games text: %s\n", TTF_GetError());
+      printf("  ERROR: Failed to create surface for no games text: %s\n", TTF_GetError());
       return 1;
     }
     else
@@ -590,15 +677,15 @@ int load_font(State* state, const char* font_path)
       SDL_FreeSurface(no_games_text_surface);
       if (no_games_text_texure == NULL)
       {
-        printf("ERROR: Failed to create texture for no games text: %s\n", SDL_GetError());
+        printf("  ERROR: Failed to create texture for no games text: %s\n", SDL_GetError());
         return 1;
       }
     }
     
-    SDL_Surface* version_number_surface = TTF_RenderUTF8_Solid(font_medium, VERSION_STRING_LITERAL, TEXT_COLOR_FADED);
+    SDL_Surface* version_number_surface = TTF_RenderUTF8_Solid(font_medium, VERSION_STRING_LITERAL, (SDL_Color){0, 0, 0, 150});
     if (version_number_surface == NULL)
     {
-      printf("ERROR: Failed to create surface for version number text: %s\n", TTF_GetError());
+      printf("  ERROR: Failed to create surface for version number text: %s\n", TTF_GetError());
       return 1;
     }
     else
@@ -608,7 +695,25 @@ int load_font(State* state, const char* font_path)
       SDL_FreeSurface(version_number_surface);
       if (version_number_texture == NULL)
       {
-        printf("ERROR: Failed to create texture for version number text: %s\n", SDL_GetError());
+        printf("  ERROR: Failed to create texture for version number text: %s\n", SDL_GetError());
+        return 1;
+      }
+    }
+
+    SDL_Surface* any_button_text_surface = TTF_RenderUTF8_Solid(font_big, "Tryck på valfri knapp", (SDL_Color){0, 0, 0, 150});
+    if (any_button_text_surface == NULL)
+    {
+      printf("  ERROR: Failed to create surface for \"Any button\" text: %s\n", TTF_GetError());
+      return 1;
+    }
+    else
+    {
+      if (any_button_text_texture != NULL) SDL_DestroyTexture(any_button_text_texture);
+      any_button_text_texture = SDL_CreateTextureFromSurface(state->renderer, any_button_text_surface);
+      SDL_FreeSurface(any_button_text_surface);
+      if (any_button_text_texture == NULL)
+      {
+        printf("  ERROR: Failed to create texture for \"Any button\" text: %s\n", SDL_GetError());
         return 1;
       }
     }
@@ -622,6 +727,24 @@ int load_arcade_images(State* state)
   int failed = 0;
   
   printf("Loading arcade images...\n");
+
+  SDL_Surface* splash_surface = IMG_Load("./images/arcade_splash.png");
+
+  if (splash_surface != NULL)
+  {
+    if ((splash_texture = SDL_CreateTextureFromSurface(state->renderer, splash_surface)) == NULL)
+    {
+      printf("  ERROR: Creating texture for splash image failed\n");
+      failed = 1;
+    }
+
+    SDL_FreeSurface(splash_surface);
+  }
+  else
+  {
+    printf("  ERROR: Failed to load \"arcade_splash.png\"\n");
+    failed = 1;
+  }
   
   SDL_Surface* button_accept_surface = IMG_Load("./images/arcade_button_green.png");
   
@@ -724,6 +847,7 @@ int find_games(State* state)
     free_game_entries(state);
     state->selection = (Position){0, 0};
     state->page = 0;
+    state->pages = 0;
     
     struct dirent* dirp;
 
@@ -853,6 +977,7 @@ int find_games(State* state)
     if (state->game_entries_len > 0)
     {
       generate_new_game_name(state);
+      state->pages = state->game_entries_len / (state->rows * state->columns) + 1;
       generate_page_text(state);
     }
     
@@ -959,10 +1084,11 @@ void move_select_down(State* state)
 {
   if (state->selection.y < state->rows - 1)
   {
+    // If the spot below current selection is outside of game entries length
     if (get_real_selection_index(state) + state->columns >= state->game_entries_len)
     {
       // If there is a row below the current one
-      if ((state->game_entries_len - (state->rows * state->columns * state->page)) / state->columns > state->selection.y)
+      if ((int)ceil(((double)state->game_entries_len - (state->rows * state->columns * state->page)) / (double)state->columns) > state->selection.y + 1)
       {
         int entries_on_page = state->game_entries_len - (state->rows * state->columns * state->page);
 
@@ -993,15 +1119,15 @@ void move_select_left(State* state)
 
 void move_select_right(State* state)
 {
-  if (state->page < (state->game_entries_len - 1) / (state->rows * state->columns) && state->selection.x == state->columns - 1)
+  if (state->page < state->pages - 1 && state->selection.x == state->columns - 1)
   {
     state->page++;
     state->selection.x = 0;
     generate_page_text(state);
     
-    if ((state->game_entries_len - (state->rows * state->columns * state->page)) / state->columns <= state->selection.y)
+    if (ceil(((double)state->game_entries_len - (state->rows * state->columns * state->page)) / state->columns) <= state->selection.y)
     {
-      state->selection.y = (state->game_entries_len - (state->rows * state->columns * state->page)) / state->columns;
+      state->selection.y = (int)ceil((state->game_entries_len - (state->rows * state->columns * state->page)) / state->columns) - 1;
     }
   }
   else if (state->selection.x < state->columns - 1)
@@ -1039,7 +1165,7 @@ void generate_page_text(State* state)
 
   if (str != NULL)
   {
-    sprintf(str, "[%d/%d]", state->page + 1, state->game_entries_len / (state->rows * state->columns) + 1);
+    sprintf(str, "[%d/%d]", state->page + 1, (int)ceil((double)state->game_entries_len / (state->rows * state->columns)));
   }
   
   SDL_Surface* page_text_surface = TTF_RenderUTF8_Solid(font_big, str, TEXT_COLOR_FADED);
