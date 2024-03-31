@@ -4,7 +4,10 @@ int main(int argc, char* argv[])
 {
   printf("Starting Adelfors Arcade...\n");
 
-  State state = { .rows = 2, .columns = 4 };
+  State state = {
+    .rows = 3,
+    .columns = 4
+    };
 
   printf("Initializing SDL...\n");
   if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_JOYSTICK))
@@ -408,7 +411,7 @@ void render_game_select_ui(State* state)
   // const int top = 200;
   // const int bottom = (state->window_w - left * 2) * 0.79365f;
   const int w = state->window_w - (left * 2);
-  const int h = (w * 0.79365f) - ((ARCADE_GAME_BOX_PADDING * 2) + (state->rows * ARCADE_GAME_BOX_PADDING) + (state->columns * ARCADE_GAME_BOX_PADDING));
+  const int h = ((w / state->columns) * 0.79365f) * state->rows;
   const int top = state->window_h / 2 - h / 2;
   const int bottom = top + h;
   // const int bottom = top + (w * 0.79365f) - ARCADE_GAME_BOX_PADDING * 2 * state->columns * state->rows;
@@ -905,7 +908,8 @@ int find_games(State* state)
                   state->game_entries[state->game_entries_len - 1].game_title = malloc(dirp_name_len + 1);
                   strcpy(state->game_entries[state->game_entries_len - 1].game_title, dirp->d_name);
 
-                  char* exe_path = malloc(path_len + name_len + 3);
+                  // char* exe_path = malloc(path_len + name_len + 3);
+                  char* exe_path = malloc(path_len + name_len + 1);
                   if (exe_path == NULL)
                   {
                     printf("  ERROR: Failed to allocate memory for exe_path\n");
@@ -913,11 +917,13 @@ int find_games(State* state)
                     break;
                   }
 
-                  strcpy(exe_path, "\"");
-                  strcat(exe_path, path);
-                  strcat(exe_path, "/");
-                  strcat(exe_path, dirp2->d_name);
-                  strcat(exe_path, "\"");
+                  // strcpy(exe_path, "\"");
+                  // strcat(exe_path, path);
+                  // strcat(exe_path, "/");
+                  // strcat(exe_path, dirp2->d_name);
+                  // strcat(exe_path, "\"");
+
+                  sprintf(exe_path, "%s/%s", path, dirp2->d_name);
 
                   state->game_entries[state->game_entries_len - 1].exe_path = exe_path;
                   exe_found = 1;
@@ -977,7 +983,7 @@ int find_games(State* state)
     if (state->game_entries_len > 0)
     {
       generate_new_game_name(state);
-      state->pages = state->game_entries_len / (state->rows * state->columns) + 1;
+      state->pages = (int)ceil((double)state->game_entries_len / (state->rows * state->columns));
       generate_page_text(state);
     }
     
@@ -1022,9 +1028,10 @@ void run_selected_game(State* state)
   if (state->game_entries != NULL)
   {
     int sel_idx = get_real_selection_index(state);
+
     if (state->game_entries[sel_idx].exe_path != NULL)
     {
-      printf("---Launching \"%s\"...---\n", state->game_entries[sel_idx].game_title);
+      printf("\n- Launching \"%s\"...\n\n", state->game_entries[sel_idx].game_title);
         
       STARTUPINFO si;
       PROCESS_INFORMATION pi;
@@ -1035,19 +1042,51 @@ void run_selected_game(State* state)
       si.dwYSize = state->window_h;
       si.dwFlags = STARTF_RUNFULLSCREEN;
 
+      // int len = strlen(state->game_entries[get_real_selection_index(state)].exe_path);
+      // char* dir_path = calloc(len + 1, sizeof(char));
+      // int reverse_len = 1;
+      // while (reverse_len < len - 1)
+      // {
+      //   dir_path[reverse_len] = state->game_entries[get_real_selection_index(state)].exe_path[reverse_len];
+      //   reverse_len++;
+      // }
+
+      // while (len > 0)
+      // {
+      //   len--;
+      //   if (dir_path[len] == '\\' || dir_path[len] == '/')
+      //   {
+      //     dir_path[len + 1] = '\0';
+      //     break;
+      //   }
+      // }
+
+      char exe_path[strlen(state->game_entries[sel_idx].exe_path) + 3];
+      sprintf(exe_path, "\"%s\"", state->game_entries[sel_idx].exe_path);
+
+      // This feels disgusting
+      char dir[MAX_PATH];
+      char dir_path[MAX_PATH];
+      _splitpath_s(state->game_entries[sel_idx].exe_path,
+        NULL, 0,
+        dir, MAX_PATH,
+        NULL, 0,
+        NULL, 0);
+      _makepath_s(dir_path, MAX_PATH, NULL, dir, NULL, NULL);
+
       ZeroMemory(&si, sizeof(si));
       si.cb = sizeof(si);
       ZeroMemory(&pi, sizeof(pi));
 
       if (!CreateProcess(
         NULL,
-        state->game_entries[sel_idx].exe_path,
+        exe_path,
         NULL,
         NULL,
         FALSE,
         HIGH_PRIORITY_CLASS | WS_POPUP,
         NULL,
-        NULL,
+        dir_path,
         &si,
         &pi))
       {
@@ -1062,7 +1101,7 @@ void run_selected_game(State* state)
       CloseHandle(pi.hProcess);
       CloseHandle(pi.hThread);
 
-      printf("\n---\"%s\" exited---\n", state->game_entries[sel_idx].game_title);
+      printf("\n- \"%s\" exited\n", state->game_entries[sel_idx].game_title);
     }
     else
     {
@@ -1124,10 +1163,12 @@ void move_select_right(State* state)
     state->page++;
     state->selection.x = 0;
     generate_page_text(state);
+
+    printf("%d\n", (int)ceil(((double)state->game_entries_len - (double)(state->rows * state->columns * state->page)) / state->columns));
     
-    if (ceil(((double)state->game_entries_len - (state->rows * state->columns * state->page)) / state->columns) <= state->selection.y)
+    if (state->page == state->pages - 1 && (int)ceil(((double)state->game_entries_len - (double)(state->rows * state->columns * state->page)) / state->columns) <= state->selection.y)
     {
-      state->selection.y = (int)ceil((state->game_entries_len - (state->rows * state->columns * state->page)) / state->columns) - 1;
+      state->selection.y = (int)ceil(((double)state->game_entries_len - (double)(state->rows * state->columns * state->page)) / state->columns) - 1;
     }
   }
   else if (state->selection.x < state->columns - 1)
