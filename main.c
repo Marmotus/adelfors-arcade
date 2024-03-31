@@ -5,7 +5,7 @@ int main(int argc, char* argv[])
   printf("Starting Adelfors Arcade...\n");
 
   State state = {
-    .rows = 3,
+    .rows = 2,
     .columns = 4
     };
 
@@ -1163,8 +1163,6 @@ void move_select_right(State* state)
     state->page++;
     state->selection.x = 0;
     generate_page_text(state);
-
-    printf("%d\n", (int)ceil(((double)state->game_entries_len - (double)(state->rows * state->columns * state->page)) / state->columns));
     
     if (state->page == state->pages - 1 && (int)ceil(((double)state->game_entries_len - (double)(state->rows * state->columns * state->page)) / state->columns) <= state->selection.y)
     {
