@@ -18,7 +18,7 @@
 #define ARCADE_UI_EDGE_MARGIN 100
 #define ARCADE_GAME_BOX_PADDING 25
 
-#define VERSION_STRING_LITERAL "v0.10"
+#define VERSION_STRING_LITERAL "v0.12"
 
 const SDL_Color TEXT_COLOR = {255, 255, 255, 255};
 const SDL_Color TEXT_COLOR_FADED = {255, 255, 255, 120};
@@ -55,10 +55,9 @@ typedef struct {
 } Position;
 
 typedef enum {
-  LOADING = 0,
-  GAME_SELECT = 1,
-  SHUTDOWN = 2,
-  SPLASH = 3,
+  MENU_LOADING = 0,
+  MENU_GAME_SELECT = 1,
+  MENU_SPLASH = 2,
 } MenuState;
 
 typedef struct {
@@ -76,37 +75,37 @@ typedef struct {
   GameEntry* game_entries;
   int game_entries_len;
   char input_enabled;
-  SDL_Joystick* joystick;
+  SDL_Joystick* joystick1;
+  SDL_Joystick* joystick2;
   MenuState menu_state;
-} State;
+} ArcadeState;
 
-int load_font(State* state, const char* font_path);
-int load_arcade_images(State* state);
+int load_font(ArcadeState* state, const char* font_path);
+int load_arcade_images(ArcadeState* state);
 
-void free_state(State* state);
-void free_game_entries(State* state);
+void free_state(ArcadeState* state);
+void free_game_entries(ArcadeState* state);
 
-int find_games(State* state);
+int find_games(ArcadeState* state);
 DWORD WINAPI start_game_thread(void* data);
-void run_selected_game(State* state);
+void run_selected_game(ArcadeState* state);
 
-int handle_events(State* state);
+int handle_events(ArcadeState* state);
 
-void render(State* state);
+void render(ArcadeState* state);
 
-void render_loading_ui(State* state);
-void render_game_select_ui(State* state);
-void render_shutdown_ui(State* state);
-void render_splash_ui(State* state);
+void render_loading_ui(ArcadeState* state);
+void render_game_select_ui(ArcadeState* state);
+void render_splash_ui(ArcadeState* state);
 
-void move_select_up(State* state);
-void move_select_down(State* state);
-void move_select_left(State* state);
-void move_select_right(State* state);
+void move_select_up(ArcadeState* state);
+void move_select_down(ArcadeState* state);
+void move_select_left(ArcadeState* state);
+void move_select_right(ArcadeState* state);
 
-int get_real_selection_index(State* state);
+int get_real_selection_index(ArcadeState* state);
 
-void generate_new_game_name(State* state);
-void generate_page_text(State* state);
+void generate_new_game_name(ArcadeState* state);
+void generate_page_text(ArcadeState* state);
 
-void set_menu_state(State* state, MenuState new_state);
+void set_menu_state(ArcadeState* state, MenuState new_state);

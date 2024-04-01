@@ -4,7 +4,7 @@ int main(int argc, char* argv[])
 {
   printf("Starting Adelfors Arcade...\n");
 
-  State state = {
+  ArcadeState state = {
     .rows = 2,
     .columns = 4
     };
@@ -45,15 +45,18 @@ int main(int argc, char* argv[])
   
   if (load_font(&state, "./font/font.ttf") == 1) return EXIT_FAILURE;
 
-  set_menu_state(&state, LOADING);
+  set_menu_state(&state, MENU_LOADING);
 
   if (load_arcade_images(&state) == 1) return EXIT_FAILURE;
 
   // Enable joystick input and find first available joystick
   SDL_JoystickEventState(SDL_ENABLE);
-  state.joystick = SDL_JoystickOpen(0);
-  if (state.joystick == NULL) printf("ERROR: JOYSTICK NULL!\n");
-  else printf("Joystick found\n");
+  state.joystick1 = SDL_JoystickOpen(0);
+  if (state.joystick1 == NULL) printf("ERROR: JOYSTICK 1 NULL!\n");
+  else printf("Joystick 1 found\n");
+  state.joystick2 = SDL_JoystickOpen(1);
+  if (state.joystick2 == NULL) printf("ERROR: JOYSTICK 2 NULL!\n");
+  else printf("Joystick 2 found\n");
   
   printf("Finding games...\n");
   if (find_games(&state) != 0)
@@ -69,13 +72,13 @@ int main(int argc, char* argv[])
   SDL_EventState(SDL_SYSWMEVENT, SDL_IGNORE);
   SDL_EventState(SDL_MOUSEMOTION, SDL_IGNORE);
 
-  set_menu_state(&state, SPLASH);
+  set_menu_state(&state, MENU_SPLASH);
   
   while (should_quit == 0)
   {
     should_quit = handle_events(&state);
     
-    if (state.menu_state != LOADING && state.game_process_handle != NULL)
+    if (state.menu_state != MENU_LOADING && state.game_process_handle != NULL)
     {
       CloseHandle(state.game_process_handle);
       state.game_process_handle = NULL;
@@ -83,13 +86,13 @@ int main(int argc, char* argv[])
       else printf("ERROR: Window handle null. Can't set focus\n");
     }
 
-    if (state.menu_state == GAME_SELECT)
+    if (state.menu_state == MENU_GAME_SELECT)
     {
       timer += TICK_RATE;
 
       if (timer >= IDLE_TIMEOUT_LIMIT)
       {
-        set_menu_state(&state, SPLASH);
+        set_menu_state(&state, MENU_SPLASH);
         timer = 0;
       }
     }
@@ -124,7 +127,7 @@ int main(int argc, char* argv[])
   return EXIT_SUCCESS;
 }
 
-int handle_events(State* state)
+int handle_events(ArcadeState* state)
 {
   char should_quit = 0;
   char should_render = 0;
@@ -152,10 +155,10 @@ int handle_events(State* state)
         {
           int old_index = get_real_selection_index(state);
 
-          if (state->menu_state == GAME_SELECT) timer = 0;
-          else if (state->menu_state == SPLASH)
+          if (state->menu_state == MENU_GAME_SELECT) timer = 0;
+          else if (state->menu_state == MENU_SPLASH)
           {
-            set_menu_state(state, GAME_SELECT);
+            set_menu_state(state, MENU_GAME_SELECT);
             break;
           }
           
@@ -164,11 +167,11 @@ int handle_events(State* state)
           {
             if (event.jaxis.value > 0)
             {
-              if (state->menu_state == GAME_SELECT) move_select_right(state);
+              if (state->menu_state == MENU_GAME_SELECT) move_select_right(state);
             }
             else if (event.jaxis.value < 0)
             {
-              if (state->menu_state == GAME_SELECT) move_select_left(state);
+              if (state->menu_state == MENU_GAME_SELECT) move_select_left(state);
             }
           }
           
@@ -177,11 +180,11 @@ int handle_events(State* state)
           {
             if (event.jaxis.value > 0)
             {
-              if (state->menu_state == GAME_SELECT) move_select_down(state);
+              if (state->menu_state == MENU_GAME_SELECT) move_select_down(state);
             }
             else if (event.jaxis.value < 0)
             {
-              if (state->menu_state == GAME_SELECT) move_select_up(state);
+              if (state->menu_state == MENU_GAME_SELECT) move_select_up(state);
             }
           }
 
@@ -198,8 +201,8 @@ int handle_events(State* state)
 
       case SDL_JOYBUTTONDOWN:
       {
-        if (state->menu_state == GAME_SELECT) timer = 0;
-        else if (state->menu_state == SPLASH)
+        if (state->menu_state == MENU_GAME_SELECT) timer = 0;
+        else if (state->menu_state == MENU_SPLASH)
         {
           remove_splash = 1;
           break;
@@ -207,17 +210,17 @@ int handle_events(State* state)
 
         switch (event.jbutton.button)
         {
-          // Pink button
+          // Green button
           case 0:
           {
-            if (state->menu_state == GAME_SELECT)
+            if (state->menu_state == MENU_GAME_SELECT)
             {
               // Start game!
               if (state->game_process_handle == NULL) state->game_process_handle = CreateThread(NULL, 0, start_game_thread, state, 0, NULL);
             }
             break;
           }
-          // White button
+          // Blue button
           case 1:
           {
             break;
@@ -227,7 +230,7 @@ int handle_events(State* state)
           {
             break;
           }
-          // Blue button
+          // Red button
           case 3:
           {
             break;
@@ -235,16 +238,6 @@ int handle_events(State* state)
           // Right black button
           case 6:
           {
-            if (state->menu_state == GAME_SELECT)
-            {
-              //
-            }
-            // else if (state->menu_state == 2)
-            // {
-            //   if (system("C:\\Windows\\System32\\shutdown /s /t 0 /d u:0:0") != 0) printf("ERROR: Shutdown failed\n");
-            //   else printf("Shutting down...\n");
-            // }
-            
             break;
           }
           // Left black button
@@ -263,8 +256,8 @@ int handle_events(State* state)
       }
       case SDL_KEYDOWN:
       {
-        if (state->menu_state == GAME_SELECT) timer = 0;
-        else if (state->menu_state == SPLASH)
+        if (state->menu_state == MENU_GAME_SELECT) timer = 0;
+        else if (state->menu_state == MENU_SPLASH)
         {
           remove_splash = 1;
           break;
@@ -276,7 +269,7 @@ int handle_events(State* state)
         {
           case SDL_SCANCODE_UP:
           {
-            if (state->menu_state == GAME_SELECT)
+            if (state->menu_state == MENU_GAME_SELECT)
             {
               move_select_up(state);
             }
@@ -284,7 +277,7 @@ int handle_events(State* state)
           }
           case SDL_SCANCODE_DOWN:
           {
-            if (state->menu_state == GAME_SELECT)
+            if (state->menu_state == MENU_GAME_SELECT)
             {
               move_select_down(state);
             }
@@ -292,7 +285,7 @@ int handle_events(State* state)
           }
           case SDL_SCANCODE_LEFT:
           {
-            if (state->menu_state == GAME_SELECT)
+            if (state->menu_state == MENU_GAME_SELECT)
             {
               move_select_left(state);
             }
@@ -300,7 +293,7 @@ int handle_events(State* state)
           }
           case SDL_SCANCODE_RIGHT:
           {
-            if (state->menu_state == GAME_SELECT)
+            if (state->menu_state == MENU_GAME_SELECT)
             {
               move_select_right(state);
             }
@@ -309,15 +302,15 @@ int handle_events(State* state)
 
           case SDL_SCANCODE_RETURN:
           {
-            if (state->menu_state == GAME_SELECT)
+            if (state->menu_state == MENU_GAME_SELECT)
             {
               // Start game!
               if (state->game_process_handle == NULL) state->game_process_handle = CreateThread(NULL, 0, start_game_thread, state, 0, NULL);
               else printf("ERROR: Failed to start game. game_process_handle is not null\n");
             }
-            else if (state->menu_state == SPLASH)
+            else if (state->menu_state == MENU_SPLASH)
             {
-              set_menu_state(state, GAME_SELECT);
+              set_menu_state(state, MENU_GAME_SELECT);
             }
 
             break;
@@ -325,19 +318,19 @@ int handle_events(State* state)
 
           case SDL_SCANCODE_G:
           {
-            if (state->menu_state != GAME_SELECT) break;
+            if (state->menu_state != MENU_GAME_SELECT) break;
             
             // If Left Shift and R are held down when G is pressed
             if (keyboard_state[SDL_SCANCODE_LSHIFT] == 1 && keyboard_state[SDL_SCANCODE_R] == 1)
             {
-              set_menu_state(state, LOADING);
+              set_menu_state(state, MENU_LOADING);
               render(state);
               
               printf("Searching for games...\n");
               find_games(state);
               printf("Search done\n");
 
-              set_menu_state(state, GAME_SELECT);
+              set_menu_state(state, MENU_GAME_SELECT);
             }
 
             break;
@@ -368,27 +361,26 @@ int handle_events(State* state)
   // Doing it this way to cancel out other inputs on the same frame
   if (remove_splash)
   {
-    set_menu_state(state, GAME_SELECT);
+    set_menu_state(state, MENU_GAME_SELECT);
   }
   else if (should_render == 1) render(state);
   
   return should_quit;
 }
 
-void render(State* state)
+void render(ArcadeState* state)
 {
   SDL_SetRenderDrawColor(state->renderer, BACKGROUND_COLOR.r, BACKGROUND_COLOR.g, BACKGROUND_COLOR.b, BACKGROUND_COLOR.a);
   SDL_RenderClear(state->renderer);
 
-  if (state->menu_state == LOADING) render_loading_ui(state);
-  else if (state->menu_state == GAME_SELECT) render_game_select_ui(state);
-  else if (state->menu_state == SPLASH) render_splash_ui(state);
-  else if (state->menu_state == SHUTDOWN) render_shutdown_ui(state);
+  if (state->menu_state == MENU_LOADING) render_loading_ui(state);
+  else if (state->menu_state == MENU_GAME_SELECT) render_game_select_ui(state);
+  else if (state->menu_state == MENU_SPLASH) render_splash_ui(state);
 
   SDL_RenderPresent(state->renderer);
 }
 
-void render_loading_ui(State* state)
+void render_loading_ui(ArcadeState* state)
 {
   if (state == NULL)
   {
@@ -404,18 +396,14 @@ void render_loading_ui(State* state)
   SDL_RenderCopy(state->renderer, loading_text_texture, NULL, &text_rect);
 }
 
-void render_game_select_ui(State* state)
+void render_game_select_ui(ArcadeState* state)
 {
   // Pre-calculate some values to make it easier to render game boxes
   const int left = 200;
-  // const int top = 200;
-  // const int bottom = (state->window_w - left * 2) * 0.79365f;
   const int w = state->window_w - (left * 2);
   const int h = ((w / state->columns) * 0.79365f) * state->rows;
   const int top = state->window_h / 2 - h / 2;
   const int bottom = top + h;
-  // const int bottom = top + (w * 0.79365f) - ARCADE_GAME_BOX_PADDING * 2 * state->columns * state->rows;
-  // const int h = bottom - top;
   
   if (state->game_entries != NULL && state->game_entries_len > 0)
   {
@@ -547,15 +535,7 @@ void render_game_select_ui(State* state)
   }
 }
 
-void render_shutdown_ui(State* state)
-{
-  SDL_SetRenderDrawColor(state->renderer, 28, 28, 28, 255);
-
-  SDL_Rect rect = {ARCADE_UI_EDGE_MARGIN * 2, ARCADE_UI_EDGE_MARGIN, state->window_w - ARCADE_UI_EDGE_MARGIN * 4, state->window_h - ARCADE_UI_EDGE_MARGIN * 2};
-  SDL_RenderFillRect(state->renderer, &rect);
-}
-
-void render_splash_ui(State* state)
+void render_splash_ui(ArcadeState* state)
 {
   SDL_SetRenderDrawColor(state->renderer, 255, 255, 255, 255);
   SDL_RenderClear(state->renderer);
@@ -611,7 +591,7 @@ void render_splash_ui(State* state)
   }
 }
 
-int load_font(State* state, const char* font_path)
+int load_font(ArcadeState* state, const char* font_path)
 {
   printf("Loading font...\n");
 
@@ -725,7 +705,7 @@ int load_font(State* state, const char* font_path)
   return 0;
 }
 
-int load_arcade_images(State* state)
+int load_arcade_images(ArcadeState* state)
 {
   int failed = 0;
   
@@ -788,20 +768,25 @@ int load_arcade_images(State* state)
   return failed;
 }
 
-void free_state(State* state)
+void free_state(ArcadeState* state)
 {
   if (state->game_entries != NULL)
   {
     free_game_entries(state);
   }
-  if (state->joystick != NULL)
+  if (state->joystick1 != NULL)
   {
-    SDL_JoystickClose(state->joystick);
-    state->joystick = NULL;
+    SDL_JoystickClose(state->joystick1);
+    state->joystick1 = NULL;
+  }
+  if (state->joystick2 != NULL)
+  {
+    SDL_JoystickClose(state->joystick2);
+    state->joystick2 = NULL;
   }
 }
 
-void free_game_entries(State* state)
+void free_game_entries(ArcadeState* state)
 {
   if (state != NULL)
   {
@@ -833,7 +818,7 @@ void free_game_entries(State* state)
   }
 }
 
-int find_games(State* state)
+int find_games(ArcadeState* state)
 {
   if (state == NULL)
   {
@@ -899,16 +884,17 @@ int find_games(State* state)
                   state->game_entries_len++;
 
                   state->game_entries = (GameEntry*)realloc(state->game_entries, sizeof(GameEntry) * state->game_entries_len);
+
                   if (state->game_entries == NULL)
                   {
                     printf("  ERROR: Failed to reallocate memory for game_entries\n");
                     break;
                   }
+
                   state->game_entries[state->game_entries_len - 1].game_image = NULL;
                   state->game_entries[state->game_entries_len - 1].game_title = malloc(dirp_name_len + 1);
                   strcpy(state->game_entries[state->game_entries_len - 1].game_title, dirp->d_name);
 
-                  // char* exe_path = malloc(path_len + name_len + 3);
                   char* exe_path = malloc(path_len + name_len + 1);
                   if (exe_path == NULL)
                   {
@@ -916,12 +902,6 @@ int find_games(State* state)
                     state->game_entries[state->game_entries_len - 1].exe_path = NULL;
                     break;
                   }
-
-                  // strcpy(exe_path, "\"");
-                  // strcat(exe_path, path);
-                  // strcat(exe_path, "/");
-                  // strcat(exe_path, dirp2->d_name);
-                  // strcat(exe_path, "\"");
 
                   sprintf(exe_path, "%s/%s", path, dirp2->d_name);
 
@@ -1009,21 +989,21 @@ int find_games(State* state)
 
 DWORD WINAPI start_game_thread(void* data)
 {
-  State* state = (State*)data;
+  ArcadeState* state = (ArcadeState*)data;
   if (state == NULL)
   {
     printf("Error: start_game_thread: state is null\n");
     return 0;
   }
 
-  set_menu_state(state, LOADING);
+  set_menu_state(state, MENU_LOADING);
   run_selected_game(state);
-  set_menu_state(state, GAME_SELECT);
+  set_menu_state(state, MENU_GAME_SELECT);
   
   return 0;
 }
 
-void run_selected_game(State* state)
+void run_selected_game(ArcadeState* state)
 {
   if (state->game_entries != NULL)
   {
@@ -1064,7 +1044,6 @@ void run_selected_game(State* state)
       char exe_path[strlen(state->game_entries[sel_idx].exe_path) + 3];
       sprintf(exe_path, "\"%s\"", state->game_entries[sel_idx].exe_path);
 
-      // This feels disgusting
       char dir[MAX_PATH];
       char dir_path[MAX_PATH];
       _splitpath_s(state->game_entries[sel_idx].exe_path,
@@ -1110,16 +1089,16 @@ void run_selected_game(State* state)
   }
   else
   {
-    printf("ERROR: Failed to start game. game_entries == NULL\n");
+    printf("ERROR: Failed to start game. game_entries is NULL\n");
   }
 }
 
-void move_select_up(State* state)
+void move_select_up(ArcadeState* state)
 {
   if (state->selection.y > 0) state->selection.y--;
 }
 
-void move_select_down(State* state)
+void move_select_down(ArcadeState* state)
 {
   if (state->selection.y < state->rows - 1)
   {
@@ -1142,7 +1121,7 @@ void move_select_down(State* state)
   }
 }
 
-void move_select_left(State* state)
+void move_select_left(ArcadeState* state)
 {
   if (state->page > 0 && state->selection.x == 0)
   {
@@ -1156,7 +1135,7 @@ void move_select_left(State* state)
   }
 }
 
-void move_select_right(State* state)
+void move_select_right(ArcadeState* state)
 {
   if (state->page < state->pages - 1 && state->selection.x == state->columns - 1)
   {
@@ -1178,12 +1157,12 @@ void move_select_right(State* state)
   }
 }
 
-int get_real_selection_index(State* state)
+int get_real_selection_index(ArcadeState* state)
 {
   return (state->columns * state->selection.y) + (state->rows * state->columns) * state->page + state->selection.x;
 }
 
-void generate_new_game_name(State* state)
+void generate_new_game_name(ArcadeState* state)
 {
   if (state->game_entries != NULL && state->game_entries_len > 0)
   {
@@ -1197,7 +1176,7 @@ void generate_new_game_name(State* state)
   }
 }
 
-void generate_page_text(State* state)
+void generate_page_text(ArcadeState* state)
 {
   const int len = 2 + ((state->page / 10) + 1) + (state->game_entries_len / (state->rows * state->columns) + 1) + 1;
   char* str = calloc(len, sizeof(char));
@@ -1218,11 +1197,11 @@ void generate_page_text(State* state)
   if (str != NULL) free(str);
 }
 
-void set_menu_state(State* state, MenuState new_state)
+void set_menu_state(ArcadeState* state, MenuState new_state)
 {
   switch (new_state)
   {
-    case LOADING:
+    case MENU_LOADING:
     {
       if (state != NULL)
       {
@@ -1233,7 +1212,7 @@ void set_menu_state(State* state, MenuState new_state)
 
       break;
     }
-    case GAME_SELECT:
+    case MENU_GAME_SELECT:
     {
       if (state != NULL)
       {
@@ -1244,7 +1223,7 @@ void set_menu_state(State* state, MenuState new_state)
 
       break;
     }
-    case SPLASH:
+    case MENU_SPLASH:
     {
       if (state != NULL)
       {
