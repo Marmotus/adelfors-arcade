@@ -8,6 +8,8 @@ int main(int argc, char* argv[])
     .rows = 2,
     .columns = 4
     };
+  
+  handle_arguments(&state, argc, argv);
 
   printf("Initializing SDL...\n");
   if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_JOYSTICK))
@@ -41,7 +43,6 @@ int main(int argc, char* argv[])
   SetFocus(state.window_handle);
   SetCursorPos(state.window_w, 0);
   SDL_ShowCursor(SDL_DISABLE);
-  // ShowCursor(0);
   
   if (load_font(&state, "./font/font.ttf") == 1) return EXIT_FAILURE;
 
@@ -64,15 +65,15 @@ int main(int argc, char* argv[])
     printf("Error finding games\n");
   }
 
-  char should_quit = 0;
-
-  printf("Beginning loop...\n");
-  
   // Ignore these types of events for performance. We don't need them.
   SDL_EventState(SDL_SYSWMEVENT, SDL_IGNORE);
   SDL_EventState(SDL_MOUSEMOTION, SDL_IGNORE);
 
   set_menu_state(&state, MENU_SPLASH);
+
+  char should_quit = 0;
+
+  printf("Beginning loop...\n");
   
   while (should_quit == 0)
   {
@@ -125,6 +126,36 @@ int main(int argc, char* argv[])
   printf("Shut down successfully!\n");
   
   return EXIT_SUCCESS;
+}
+
+void handle_arguments(ArcadeState* state, int argc, char* argv[])
+{
+  char last_arg[64] = {0};
+
+  printf("Args:\n");
+
+  for (int i = 1; i < argc; i++)
+  {
+    printf("  %s\n", argv[i]);
+
+    if (strlen(last_arg) > 0)
+    {
+      if (!strcmp(last_arg, "-rows\0"))
+      {
+        state->rows = atoi(argv[i]);
+      }
+      else if (!strcmp(last_arg, "-columns\0"))
+      {
+        state->columns = atoi(argv[i]);
+      }
+
+      last_arg[0] = '\0';
+    }
+    else
+    {
+      strcpy_s(last_arg, 64, argv[i]);
+    }
+  }
 }
 
 int handle_events(ArcadeState* state)
@@ -603,6 +634,8 @@ int load_font(ArcadeState* state, const char* font_path)
       printf("  ERROR: Failed loading font\n");
       return 1;
     }
+
+    TTF_SetFontWrappedAlign(font_big, TTF_WRAPPED_ALIGN_CENTER);
 
     font_medium = TTF_OpenFont(font_path, 32);
     if (font_medium == NULL)
@@ -1143,6 +1176,7 @@ void move_select_right(ArcadeState* state)
     state->selection.x = 0;
     generate_page_text(state);
     
+    // If lowest row is above current selection
     if (state->page == state->pages - 1 && (int)ceil(((double)state->game_entries_len - (double)(state->rows * state->columns * state->page)) / state->columns) <= state->selection.y)
     {
       state->selection.y = (int)ceil(((double)state->game_entries_len - (double)(state->rows * state->columns * state->page)) / state->columns) - 1;
@@ -1166,7 +1200,7 @@ void generate_new_game_name(ArcadeState* state)
 {
   if (state->game_entries != NULL && state->game_entries_len > 0)
   {
-    SDL_Surface* game_name_surface = TTF_RenderUTF8_Solid(font_big, state->game_entries[get_real_selection_index(state)].game_title, TEXT_COLOR);
+    SDL_Surface* game_name_surface = TTF_RenderUTF8_Solid_Wrapped(font_big, state->game_entries[get_real_selection_index(state)].game_title, TEXT_COLOR, state->window_w - 50);
     if (game_name_surface == NULL) printf("ERROR: generate_new_game_name(): %s\n", TTF_GetError());
     
     if (game_name_texture != NULL) SDL_DestroyTexture(game_name_texture);

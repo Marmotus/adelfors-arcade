@@ -80,6 +80,8 @@ typedef struct {
   MenuState menu_state;
 } ArcadeState;
 
+void handle_arguments(ArcadeState* state, int argc, char* argv[]);
+
 int load_font(ArcadeState* state, const char* font_path);
 int load_arcade_images(ArcadeState* state);
 
