@@ -619,6 +619,10 @@ void render_splash_ui(ArcadeState* state)
     text_rect.y = 75;
 
     SDL_RenderCopy(state->renderer, any_button_text_texture, NULL, &text_rect);
+
+    text_rect.y = state->window_h - text_rect.h - 75;
+
+    SDL_RenderCopy(state->renderer, any_button_text_texture, NULL, &text_rect);
   }
 }
 
