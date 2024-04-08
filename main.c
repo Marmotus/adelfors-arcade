@@ -869,6 +869,8 @@ int find_games(ArcadeState* state)
 
   if (dir != NULL)
   {
+    printf("find_games test 1\n"); // REMOVE LATER
+
     free_game_entries(state);
     state->selection = (Position){0, 0};
     state->page = 0;
@@ -876,26 +878,37 @@ int find_games(ArcadeState* state)
     
     struct dirent* dirp;
 
+    printf("find_games test 2\n"); // REMOVE LATER
+
     while ((dirp = readdir(dir)) != NULL)
     {
+      printf("find_games test 3\n"); // REMOVE LATER
+
       // Ignore current and parent directory links and the desktop.ini file that can appear on Windows
-      if (strcmp(dirp->d_name, ".") == 0 || strcmp(dirp->d_name, "..") == 0 || strcmp(dirp->d_name, "desktop.ini") == 0) continue;
+      if (strcmp(dirp->d_name, ".\0") == 0 || strcmp(dirp->d_name, "..\0") == 0 || strcmp(dirp->d_name, "desktop.ini\0") == 0) continue;
 
       int dirp_name_len = strlen(dirp->d_name);
 
       char* path = malloc(strlen(GAMES_PATH) + dirp_name_len + 2);
-      strcpy(path, GAMES_PATH);
-      strcat(path, "/");
-      strcat(path, dirp->d_name);
+      // strcpy(path, GAMES_PATH);
+      // strcat(path, "/");
+      // strcat(path, dirp->d_name);
+      sprintf(path, "%s/%s", GAMES_PATH, dirp->d_name);
 
       int path_len = strlen(path);
+
+      printf("find_games test 4\n"); // REMOVE LATER
         
       struct stat s;
       if (stat(path, &s) == 0)
       {
+        printf("find_games test 5\n"); // REMOVE LATER
+
         // If what we found is a directory
         if (s.st_mode & S_IFDIR)
         {
+          printf("find_games test 6\n"); // REMOVE LATER
+
           // Open the directory and look for a .exe
           DIR* game_dir = opendir(path);
           
@@ -907,15 +920,18 @@ int find_games(ArcadeState* state)
             struct dirent* dirp2;
             while((dirp2 = readdir(game_dir)) != NULL)
             {
-              if (strcmp(dirp2->d_name, ".") == 0 || strcmp(dirp2->d_name, "..") == 0 || strcmp(dirp2->d_name, "desktop.ini") == 0) continue;
+              if (strcmp(dirp2->d_name, ".\0") == 0 || strcmp(dirp2->d_name, "..\0") == 0 || strcmp(dirp2->d_name, "desktop.ini\0") == 0) continue;
               // Ignore some potential .exes
               if (strcmp(dirp->d_name, "UnityCrashHandler64.exe\0") == 0) continue;
+
+              printf("find_games test 7\n"); // REMOVE LATER
               
               int name_len = strlen(dirp2->d_name);
               if (name_len > 4)
               {
                 if (dirp2->d_name[name_len - 4] == '.' && dirp2->d_name[name_len - 3] == 'e' && dirp2->d_name[name_len - 2] == 'x' && dirp2->d_name[name_len - 1] == 'e' && exe_found == 0)
                 {
+                  printf("find_games test FOUND EXE 1\n"); // REMOVE LATER
                   printf("  [%s]\n", dirp->d_name);
 
                   state->game_entries_len++;
@@ -925,19 +941,24 @@ int find_games(ArcadeState* state)
                   if (state->game_entries == NULL)
                   {
                     printf("  ERROR: Failed to reallocate memory for game_entries\n");
-                    break;
+                    return 1;
                   }
 
                   state->game_entries[state->game_entries_len - 1].game_image = NULL;
                   state->game_entries[state->game_entries_len - 1].game_title = malloc(dirp_name_len + 1);
-                  strcpy(state->game_entries[state->game_entries_len - 1].game_title, dirp->d_name);
+                  int err = strcpy_s(state->game_entries[state->game_entries_len - 1].game_title, dirp_name_len + 1, dirp->d_name);
+                  if (err != 0)
+                  {
+                    printf("  ERROR: Could not copy name to game_title: %d\n", err);
+                    return 1;
+                  }
 
                   char* exe_path = malloc(path_len + name_len + 1);
                   if (exe_path == NULL)
                   {
                     printf("  ERROR: Failed to allocate memory for exe_path\n");
                     state->game_entries[state->game_entries_len - 1].exe_path = NULL;
-                    break;
+                    return 1;
                   }
 
                   sprintf(exe_path, "%s/%s", path, dirp2->d_name);
@@ -946,11 +967,15 @@ int find_games(ArcadeState* state)
                   exe_found = 1;
 
                   printf("    %s\n", exe_path);
+
+                  printf("find_games test FOUND EXE 2\n"); // REMOVE LATER
                 }
                 else if (strcmp(dirp2->d_name, "game_icon.png\0") == 0 || strcmp(dirp2->d_name, "game_icon.jpg\0") == 0)
                 {
+                  printf("find_games test FOUND ICON 1\n"); // REMOVE LATER
                   icon_name = malloc(14);
-                  strcpy(icon_name, dirp2->d_name);
+                  strcpy_s(icon_name, 14, dirp2->d_name);
+                  printf("find_games test FOUND ICON 2\n"); // REMOVE LATER
                 }
               }
             }
@@ -977,10 +1002,17 @@ int find_games(ArcadeState* state)
               }
               else printf("  ERROR: image_surface null: %s\n", SDL_GetError());
 
+              if (icon_path != NULL)
+              {
+                free(icon_path);
+                icon_path = NULL;
+              }
+            }
+
+            if (icon_name != NULL)
+            {
               free(icon_name);
               icon_name = NULL;
-              free(icon_path);
-              icon_path = NULL;
             }
 
             closedir(game_dir);
