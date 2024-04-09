@@ -78,6 +78,7 @@ typedef struct {
   SDL_Joystick* joystick1;
   SDL_Joystick* joystick2;
   MenuState menu_state;
+  MenuState next_state;
 } ArcadeState;
 
 void handle_arguments(ArcadeState* state, int argc, char* argv[]);
@@ -89,6 +90,8 @@ void free_state(ArcadeState* state);
 void free_game_entries(ArcadeState* state);
 
 int find_games(ArcadeState* state);
+int search_game_directory(ArcadeState* state, struct dirent* dir_entry, char* path);
+
 DWORD WINAPI start_game_thread(void* data);
 void run_selected_game(ArcadeState* state);
 

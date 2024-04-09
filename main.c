@@ -7,7 +7,7 @@ int main(int argc, char* argv[])
   ArcadeState state = {
     .rows = 2,
     .columns = 4
-    };
+  };
   
   handle_arguments(&state, argc, argv);
 
@@ -63,6 +63,7 @@ int main(int argc, char* argv[])
   if (find_games(&state) != 0)
   {
     printf("Error finding games\n");
+    return EXIT_FAILURE;
   }
 
   // Ignore these types of events for performance. We don't need them.
@@ -96,6 +97,14 @@ int main(int argc, char* argv[])
         set_menu_state(&state, MENU_SPLASH);
         timer = 0;
       }
+    }
+
+    if (state.next_state != state.menu_state)
+    {
+      set_menu_state(&state, state.next_state);
+
+      // I have no idea why, but for some reason the "stuck on loading screen" bug after closing a certain game is fixed by rendering a second time???
+      render(&state);
     }
 
     // Limit loop frequency to leave more resources for the actual games and to save on electricity
@@ -160,6 +169,11 @@ void handle_arguments(ArcadeState* state, int argc, char* argv[])
 
 int handle_events(ArcadeState* state)
 {
+  if (state == NULL)
+  {
+    printf("ERROR: handle_events: state is null\n");
+  }
+
   char should_quit = 0;
   char should_render = 0;
   char remove_splash = 0;
@@ -168,7 +182,8 @@ int handle_events(ArcadeState* state)
   
   SDL_Event event;
 
-  while (SDL_PollEvent(&event))
+  int poll_event_err = 0;
+  while ((poll_event_err = SDL_PollEvent(&event)))
   {
     if (state->input_enabled != 1) continue;
     
@@ -247,7 +262,12 @@ int handle_events(ArcadeState* state)
             if (state->menu_state == MENU_GAME_SELECT)
             {
               // Start game!
-              if (state->game_process_handle == NULL) state->game_process_handle = CreateThread(NULL, 0, start_game_thread, state, 0, NULL);
+              if (state->game_process_handle == NULL)
+              {
+                state->game_process_handle = CreateThread(NULL, 0, start_game_thread, state, 0, NULL);
+                set_menu_state(state, MENU_LOADING);
+              }
+              else printf("ERROR: Failed to start game. game_process_handle is not null\n");
             }
             break;
           }
@@ -336,7 +356,11 @@ int handle_events(ArcadeState* state)
             if (state->menu_state == MENU_GAME_SELECT)
             {
               // Start game!
-              if (state->game_process_handle == NULL) state->game_process_handle = CreateThread(NULL, 0, start_game_thread, state, 0, NULL);
+              if (state->game_process_handle == NULL)
+              {
+                state->game_process_handle = CreateThread(NULL, 0, start_game_thread, state, 0, NULL);
+                set_menu_state(state, MENU_LOADING);
+              }
               else printf("ERROR: Failed to start game. game_process_handle is not null\n");
             }
             else if (state->menu_state == MENU_SPLASH)
@@ -869,8 +893,6 @@ int find_games(ArcadeState* state)
 
   if (dir != NULL)
   {
-    printf("find_games test 1\n"); // REMOVE LATER
-
     free_game_entries(state);
     state->selection = (Position){0, 0};
     state->page = 0;
@@ -878,144 +900,38 @@ int find_games(ArcadeState* state)
     
     struct dirent* dirp;
 
-    printf("find_games test 2\n"); // REMOVE LATER
-
     while ((dirp = readdir(dir)) != NULL)
     {
-      printf("find_games test 3\n"); // REMOVE LATER
-
       // Ignore current and parent directory links and the desktop.ini file that can appear on Windows
       if (strcmp(dirp->d_name, ".\0") == 0 || strcmp(dirp->d_name, "..\0") == 0 || strcmp(dirp->d_name, "desktop.ini\0") == 0) continue;
 
       int dirp_name_len = strlen(dirp->d_name);
 
-      char* path = malloc(strlen(GAMES_PATH) + dirp_name_len + 2);
-      // strcpy(path, GAMES_PATH);
-      // strcat(path, "/");
-      // strcat(path, dirp->d_name);
-      sprintf(path, "%s/%s", GAMES_PATH, dirp->d_name);
+      char* path = calloc(strlen(GAMES_PATH) + dirp_name_len + 2, sizeof(char));
+      if (path == NULL)
+      {
+        printf("  ERROR: Failed to allocate memory for path\n");
+        return 1;
+      }
+
+      int err = sprintf_s(path, strlen(GAMES_PATH) + dirp_name_len + 2, "%s/%s", GAMES_PATH, dirp->d_name);
+      if (err < 0)
+      {
+        printf("  ERROR: Failed to copy string to path: %d\n", err);
+        return 1;
+      }
 
       int path_len = strlen(path);
-
-      printf("find_games test 4\n"); // REMOVE LATER
         
       struct stat s;
       if (stat(path, &s) == 0)
       {
-        printf("find_games test 5\n"); // REMOVE LATER
-
         // If what we found is a directory
         if (s.st_mode & S_IFDIR)
         {
-          printf("find_games test 6\n"); // REMOVE LATER
-
-          // Open the directory and look for a .exe
-          DIR* game_dir = opendir(path);
-          
-          if (game_dir != NULL)
+          if (search_game_directory(state, dirp, path) != 0)
           {
-            char exe_found = 0;
-            char* icon_name = NULL;
-            
-            struct dirent* dirp2;
-            while((dirp2 = readdir(game_dir)) != NULL)
-            {
-              if (strcmp(dirp2->d_name, ".\0") == 0 || strcmp(dirp2->d_name, "..\0") == 0 || strcmp(dirp2->d_name, "desktop.ini\0") == 0) continue;
-              // Ignore some potential .exes
-              if (strcmp(dirp->d_name, "UnityCrashHandler64.exe\0") == 0) continue;
-
-              printf("find_games test 7\n"); // REMOVE LATER
-              
-              int name_len = strlen(dirp2->d_name);
-              if (name_len > 4)
-              {
-                if (dirp2->d_name[name_len - 4] == '.' && dirp2->d_name[name_len - 3] == 'e' && dirp2->d_name[name_len - 2] == 'x' && dirp2->d_name[name_len - 1] == 'e' && exe_found == 0)
-                {
-                  printf("find_games test FOUND EXE 1\n"); // REMOVE LATER
-                  printf("  [%s]\n", dirp->d_name);
-
-                  state->game_entries_len++;
-
-                  state->game_entries = (GameEntry*)realloc(state->game_entries, sizeof(GameEntry) * state->game_entries_len);
-
-                  if (state->game_entries == NULL)
-                  {
-                    printf("  ERROR: Failed to reallocate memory for game_entries\n");
-                    return 1;
-                  }
-
-                  state->game_entries[state->game_entries_len - 1].game_image = NULL;
-                  state->game_entries[state->game_entries_len - 1].game_title = malloc(dirp_name_len + 1);
-                  int err = strcpy_s(state->game_entries[state->game_entries_len - 1].game_title, dirp_name_len + 1, dirp->d_name);
-                  if (err != 0)
-                  {
-                    printf("  ERROR: Could not copy name to game_title: %d\n", err);
-                    return 1;
-                  }
-
-                  char* exe_path = malloc(path_len + name_len + 1);
-                  if (exe_path == NULL)
-                  {
-                    printf("  ERROR: Failed to allocate memory for exe_path\n");
-                    state->game_entries[state->game_entries_len - 1].exe_path = NULL;
-                    return 1;
-                  }
-
-                  sprintf(exe_path, "%s/%s", path, dirp2->d_name);
-
-                  state->game_entries[state->game_entries_len - 1].exe_path = exe_path;
-                  exe_found = 1;
-
-                  printf("    %s\n", exe_path);
-
-                  printf("find_games test FOUND EXE 2\n"); // REMOVE LATER
-                }
-                else if (strcmp(dirp2->d_name, "game_icon.png\0") == 0 || strcmp(dirp2->d_name, "game_icon.jpg\0") == 0)
-                {
-                  printf("find_games test FOUND ICON 1\n"); // REMOVE LATER
-                  icon_name = malloc(14);
-                  strcpy_s(icon_name, 14, dirp2->d_name);
-                  printf("find_games test FOUND ICON 2\n"); // REMOVE LATER
-                }
-              }
-            }
-
-            if (exe_found == 1 && icon_name != NULL)
-            {
-              char* icon_path = malloc(path_len + strlen(icon_name) + 1);
-              sprintf(icon_path, "%s/%s", path, icon_name);
-
-              SDL_Surface* image_surface = IMG_Load(icon_path);
-              SDL_Texture* image_texture;
-
-              if (image_surface != NULL)
-              {
-                image_texture = SDL_CreateTextureFromSurface(state->renderer, image_surface);
-                if (image_texture != NULL)
-                {
-                  state->game_entries[state->game_entries_len - 1].game_image = image_texture;
-                  printf("    Icon found\n");
-                }
-                else printf("  ERROR: image_texture null: %s\n", SDL_GetError());
-
-                SDL_FreeSurface(image_surface);
-              }
-              else printf("  ERROR: image_surface null: %s\n", SDL_GetError());
-
-              if (icon_path != NULL)
-              {
-                free(icon_path);
-                icon_path = NULL;
-              }
-            }
-
-            if (icon_name != NULL)
-            {
-              free(icon_name);
-              icon_name = NULL;
-            }
-
-            closedir(game_dir);
+            printf("Encountered error searching game directory");
           }
         }
       }
@@ -1056,18 +972,154 @@ int find_games(ArcadeState* state)
   }
 }
 
+int search_game_directory(ArcadeState* state, struct dirent* dir_entry, char* path)
+{
+  // Open the directory and look for a .exe
+  DIR* game_dir = opendir(path);
+  
+  if (game_dir == NULL)
+  {
+    printf("ERROR: search_game_directory: game_dir invalid\n");
+    return 1;
+  }
+
+  int path_len = strlen(path);
+  int dir_entry_len = strlen(dir_entry->d_name);
+  
+  char exe_found = 0;
+  char* icon_name = NULL;
+  
+  struct dirent* game_dir_entry;
+  while((game_dir_entry = readdir(game_dir)) != NULL)
+  {
+    if (strcmp(game_dir_entry->d_name, ".\0") == 0 || strcmp(game_dir_entry->d_name, "..\0") == 0 || strcmp(game_dir_entry->d_name, "desktop.ini\0") == 0) continue;
+    // Ignore some potential .exes
+    if (strcmp(game_dir_entry->d_name, "UnityCrashHandler64.exe\0") == 0) continue;
+    
+    int name_len = strlen(game_dir_entry->d_name);
+    if (name_len > 4)
+    {
+      if (game_dir_entry->d_name[name_len - 4] == '.' && game_dir_entry->d_name[name_len - 3] == 'e' && game_dir_entry->d_name[name_len - 2] == 'x' && game_dir_entry->d_name[name_len - 1] == 'e' && exe_found == 0)
+      {
+        printf("  [%s]\n", dir_entry->d_name);
+
+        state->game_entries_len++;
+
+        state->game_entries = (GameEntry*)realloc(state->game_entries, sizeof(GameEntry) * state->game_entries_len);
+        if (state->game_entries == NULL)
+        {
+          printf("  ERROR: Failed to reallocate memory for game_entries\n");
+          return 1;
+        }
+
+        state->game_entries[state->game_entries_len - 1].game_image = NULL;
+        state->game_entries[state->game_entries_len - 1].game_title = malloc(dir_entry_len + 1);
+        int err = strcpy_s(state->game_entries[state->game_entries_len - 1].game_title, dir_entry_len + 1, dir_entry->d_name);
+        if (err != 0)
+        {
+          printf("  ERROR: Could not copy name to game_title: %d\n", err);
+          return 1;
+        }
+
+        char* exe_path = malloc(path_len + name_len + 2);
+        if (exe_path == NULL)
+        {
+          printf("  ERROR: Failed to allocate memory for exe_path\n");
+          state->game_entries[state->game_entries_len - 1].exe_path = NULL;
+          return 1;
+        }
+
+        if ((sprintf_s(exe_path, path_len + name_len + 2, "%s/%s", path, game_dir_entry->d_name)) < 0)
+        {
+          printf("ERROR: Failed to set exe_path\n");
+          return 1;
+        }
+
+        state->game_entries[state->game_entries_len - 1].exe_path = exe_path;
+        exe_found = 1;
+
+        printf("    %s\n", exe_path);
+      }
+      else if (strcmp(game_dir_entry->d_name, "game_icon.png\0") == 0 || strcmp(game_dir_entry->d_name, "game_icon.jpg\0") == 0)
+      {
+        icon_name = malloc(14);
+
+        int icon_name_set_err = strcpy_s(icon_name, 14, game_dir_entry->d_name);
+        if (icon_name_set_err != 0)
+        {
+          printf("  ERROR: Failed to set icon_name\n");
+          return 1;
+        }
+      }
+    }
+  }
+
+  if (exe_found == 1 && icon_name != NULL)
+  {
+    char* icon_path = calloc(path_len + strlen(icon_name) + 2, sizeof(char));
+    if (icon_path == NULL)
+    {
+      printf("  ERROR: Failed to allocate memory for icon_path\n");
+      return 1;
+    }
+
+    printf("    path: %s\n", path);
+    printf("    icon_name: %s\n", icon_name);
+
+    int icon_path_set_err = sprintf_s(icon_path, path_len + strlen(icon_name) + 2, "%s/%s", path, icon_name);
+    if (icon_path_set_err < 0)
+    {
+      printf("  ERROR: Failed to set icon_path: %d\n", icon_path_set_err);
+      return 1;
+    }
+
+    SDL_Surface* image_surface = IMG_Load(icon_path);
+    SDL_Texture* image_texture;
+
+    if (image_surface != NULL)
+    {
+      image_texture = SDL_CreateTextureFromSurface(state->renderer, image_surface);
+      if (image_texture != NULL)
+      {
+        state->game_entries[state->game_entries_len - 1].game_image = image_texture;
+        printf("    Icon found\n");
+      }
+      else printf("  ERROR: image_texture null: %s\n", SDL_GetError());
+
+      SDL_FreeSurface(image_surface);
+    }
+    else printf("  ERROR: image_surface null: %s\n", SDL_GetError());
+
+    if (icon_path != NULL)
+    {
+      free(icon_path);
+      icon_path = NULL;
+    }
+  }
+
+  if (icon_name != NULL)
+  {
+    free(icon_name);
+    icon_name = NULL;
+  }
+
+  closedir(game_dir);
+
+  return 0;
+}
+
 DWORD WINAPI start_game_thread(void* data)
 {
   ArcadeState* state = (ArcadeState*)data;
   if (state == NULL)
   {
     printf("Error: start_game_thread: state is null\n");
+    state->next_state = MENU_GAME_SELECT;
     return 0;
   }
 
-  set_menu_state(state, MENU_LOADING);
   run_selected_game(state);
-  set_menu_state(state, MENU_GAME_SELECT);
+  state->next_state = MENU_GAME_SELECT;
   
   return 0;
 }
@@ -1091,25 +1143,7 @@ void run_selected_game(ArcadeState* state)
       si.dwYSize = state->window_h;
       si.dwFlags = STARTF_RUNFULLSCREEN;
 
-      // int len = strlen(state->game_entries[get_real_selection_index(state)].exe_path);
-      // char* dir_path = calloc(len + 1, sizeof(char));
-      // int reverse_len = 1;
-      // while (reverse_len < len - 1)
-      // {
-      //   dir_path[reverse_len] = state->game_entries[get_real_selection_index(state)].exe_path[reverse_len];
-      //   reverse_len++;
-      // }
-
-      // while (len > 0)
-      // {
-      //   len--;
-      //   if (dir_path[len] == '\\' || dir_path[len] == '/')
-      //   {
-      //     dir_path[len + 1] = '\0';
-      //     break;
-      //   }
-      // }
-
+      // EXE path to supply to CreateProcess so that the game's working directory is correct
       char exe_path[strlen(state->game_entries[sel_idx].exe_path) + 3];
       sprintf(exe_path, "\"%s\"", state->game_entries[sel_idx].exe_path);
 
@@ -1269,38 +1303,38 @@ void generate_page_text(ArcadeState* state)
 
 void set_menu_state(ArcadeState* state, MenuState new_state)
 {
+  if (state == NULL)
+  {
+    printf("ERROR: set_menu_state: state is null\n");
+    return;
+  }
+
   switch (new_state)
   {
     case MENU_LOADING:
     {
-      if (state != NULL)
-      {
-        state->menu_state = new_state;
-        state->input_enabled = 0;
-        render(state);
-      }
+      state->menu_state = new_state;
+      state->next_state = new_state;
+      state->input_enabled = 0;
+      render(state);
 
       break;
     }
     case MENU_GAME_SELECT:
     {
-      if (state != NULL)
-      {
-        state->menu_state = new_state;
-        state->input_enabled = 1;
-        render(state);
-      }
+      state->menu_state = new_state;
+      state->next_state = new_state;
+      state->input_enabled = 1;
+      render(state);
 
       break;
     }
     case MENU_SPLASH:
     {
-      if (state != NULL)
-      {
-        state->menu_state = new_state;
-        state->input_enabled = 1;
-        render(state);
-      }
+      state->menu_state = new_state;
+      state->next_state = new_state;
+      state->input_enabled = 1;
+      render(state);
     }
     default:
     {
