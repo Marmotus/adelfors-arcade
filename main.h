@@ -28,6 +28,9 @@ const SDL_Color SELECTION_COLOR = {60, 60, 60, 255};
 
 double timer = 0.0f;
 
+char** search_folders;
+int search_folders_len = 0;
+
 TTF_Font* font_big = NULL;
 TTF_Font* font_medium = NULL;
 
@@ -85,11 +88,14 @@ void handle_arguments(ArcadeState* state, int argc, char* argv[]);
 
 int load_font(ArcadeState* state, const char* font_path);
 int load_arcade_images(ArcadeState* state);
+int load_settings(ArcadeState* state);
 
 void free_state(ArcadeState* state);
 void free_game_entries(ArcadeState* state);
+void free_search_folders();
 
 int find_games(ArcadeState* state);
+int search_category_directory(ArcadeState* state, char* category_path);
 int search_game_directory(ArcadeState* state, struct dirent* dir_entry, char* path);
 
 DWORD WINAPI start_game_thread(void* data);

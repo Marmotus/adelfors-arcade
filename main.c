@@ -9,7 +9,8 @@ int main(int argc, char* argv[])
     .columns = 4
   };
   
-  handle_arguments(&state, argc, argv);
+  // handle_arguments(&state, argc, argv);
+  load_settings(&state);
 
   printf("Initializing SDL...\n");
   if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_JOYSTICK))
@@ -126,6 +127,7 @@ int main(int argc, char* argv[])
 
   TTF_Quit();
 
+  free_search_folders();
   free_state(&state);
   
   SDL_DestroyRenderer(state.renderer);
@@ -182,8 +184,7 @@ int handle_events(ArcadeState* state)
   
   SDL_Event event;
 
-  int poll_event_err = 0;
-  while ((poll_event_err = SDL_PollEvent(&event)))
+  while (SDL_PollEvent(&event))
   {
     if (state->input_enabled != 1) continue;
     
@@ -829,6 +830,178 @@ int load_arcade_images(ArcadeState* state)
   return failed;
 }
 
+int load_settings(ArcadeState* state)
+{
+  printf("Loading settings...\n");
+
+  char failed = 0;
+
+  FILE* file;
+  file = fopen("./arcade_config.txt", "r");
+  if (file == NULL)
+  {
+    printf("ERROR: load_settings(): Could not open config file\n");
+    return 1;
+  }
+
+  char setting[64];
+  char line[512];
+  int line_number = 0;
+  int line_len;
+
+  while (fgets(line, 512, file))
+  {
+    line_number++;
+    line_len = strlen(line);
+    if (line_len <= 0) continue;
+
+    for (int i = 0; i < line_len; i++)
+    {
+      // If line contains line feed character
+      if (line[i] == 0x0A)
+      {
+        line[i] = 0;
+        line_len--;
+        break;
+      }
+    }
+
+    if (
+      strcmp(line, "[Rows]") == 0 ||
+      strcmp(line, "[Columns]") == 0 ||
+      strcmp(line, "[Folders]") == 0
+    )
+    {
+      if (strcpy_s(setting, 64, line) != 0)
+      {
+        printf("  ERROR: Failed to set \"setting\" to \"%s\". Config line number: %d\n", line, line_number);
+        continue;
+      }
+      else printf("  %s\n", setting);
+    }
+    else
+    {
+      char param_success = 0;
+
+      for (int i = 0; i < line_len; i++)
+      {
+        if (isalnum(line[i]) != 0)
+        {
+          param_success = 1;
+          break;
+        }
+        else if (line[i] == 0 || line[i] == EOF)
+        {
+          param_success = 0;
+          break;
+        }
+      }
+
+      if (param_success == 0) continue;
+
+      param_success = 0;
+
+      if (strcmp(setting, "[Rows]") == 0)
+      {
+        char not_num = 0;
+
+        for (int i = 0; i < line_len; i++)
+        {
+          // If character is not a digit
+          if (isdigit(line[i]) == 0)
+          {
+            not_num = 1;
+            break;
+          }
+        }
+
+        if (not_num != 0 || atoi(line) <= 0)
+        {
+          printf("    WARNING: Invalid parameter for %s: \"%s\". On line %d.\n", setting, line, line_number);
+          continue;
+        }
+
+        state->rows = atoi(line);
+        param_success = 1;
+      }
+      else if (strcmp(setting, "[Columns]") == 0)
+      {
+        char not_num = 0;
+
+        for (int i = 0; i < line_len; i++)
+        {
+          // If character is not a digit
+          if (isdigit(line[i]) == 0)
+          {
+            not_num = 1;
+            break;
+          }
+        }
+
+        if (not_num != 0 || atoi(line) <= 0)
+        {
+          printf("    WARNING: Invalid parameter for %s: \"%s\". On line %d.\n", setting, line, line_number);
+          continue;
+        }
+
+        state->columns = atoi(line);
+        param_success = 1;
+      }
+      else if (strcmp(setting, "[Folders]") == 0)
+      {
+        if (search_folders == NULL)
+        {
+          search_folders = (char**)malloc(sizeof(char**));
+          if (search_folders == NULL)
+          {
+            printf("    ERROR: Failed to allocate memory for \"search_folders\"\n");
+            failed = 1;
+            break;
+          }
+
+          search_folders_len = 1;
+        }
+        else
+        {
+          char** temp_ptr = (char**)realloc(search_folders, sizeof(char**) * search_folders_len + 1);
+          if (temp_ptr == NULL)
+          {
+            printf("    ERROR: Failed to reallocate memory for \"search_folders\"\n");
+            free_search_folders();
+            failed = 1;
+            break;
+          }
+
+          search_folders_len++;
+          search_folders = temp_ptr;
+        }
+
+        search_folders[search_folders_len - 1] = malloc(line_len + 1);
+        if (strcpy_s(search_folders[search_folders_len - 1], line_len + 1, line) != 0)
+        {
+          printf("    ERROR: Failed to set search_folders[%d]\n", search_folders_len - 1);
+          free_search_folders();
+          failed = 1;
+          break;
+        }
+
+        param_success = 1;
+      }
+
+      if (param_success != 0)
+      {
+        printf("    \"%s\"\n", line);
+      }
+    }
+  }
+
+  fclose(file);
+
+  if (failed != 0) free_search_folders();
+
+  return failed;
+}
+
 void free_state(ArcadeState* state)
 {
   if (state->game_entries != NULL)
@@ -876,7 +1049,27 @@ void free_game_entries(ArcadeState* state)
       state->game_entries = NULL;
       state->game_entries_len = 0;
     }
+
+    state->selection = (Position){0, 0};
+    state->page = 0;
+    state->pages = 0;
   }
+}
+
+void free_search_folders()
+{
+  if (search_folders == NULL) return;
+
+  for (int i = 0; i < search_folders_len; i++)
+  {
+    if (search_folders[i] != NULL)
+    {
+      free(search_folders[i]);
+      search_folders[i] = NULL;
+    }
+  }
+
+  free(search_folders);
 }
 
 int find_games(ArcadeState* state)
@@ -886,90 +1079,106 @@ int find_games(ArcadeState* state)
     printf("ERROR: find_games(): state is null\n");
     return 1;
   }
-  
-  const char GAMES_PATH[] = "./games";
-  
-  DIR* dir = opendir(GAMES_PATH);
 
-  if (dir != NULL)
-  {
-    free_game_entries(state);
-    state->selection = (Position){0, 0};
-    state->page = 0;
-    state->pages = 0;
+  free_game_entries(state);
+  state->selection = (Position){0, 0};
+  state->page = 0;
+  state->pages = 0;
+
+  /// TODO: Open config file and find categories to search
+
+
+
+  return 0;
+
+  // const char GAMES_PATH[] = "./games";
+  
+  // DIR* dir = opendir(GAMES_PATH);
+
+  // if (dir != NULL)
+  // {
+  //   free_game_entries(state);
+  //   state->selection = (Position){0, 0};
+  //   state->page = 0;
+  //   state->pages = 0;
     
-    struct dirent* dirp;
+  //   struct dirent* dirp;
 
-    while ((dirp = readdir(dir)) != NULL)
-    {
-      // Ignore current and parent directory links and the desktop.ini file that can appear on Windows
-      if (strcmp(dirp->d_name, ".\0") == 0 || strcmp(dirp->d_name, "..\0") == 0 || strcmp(dirp->d_name, "desktop.ini\0") == 0) continue;
+  //   while ((dirp = readdir(dir)) != NULL)
+  //   {
+  //     // Ignore current and parent directory links and the desktop.ini file that can appear on Windows
+  //     if (strcmp(dirp->d_name, ".\0") == 0 || strcmp(dirp->d_name, "..\0") == 0 || strcmp(dirp->d_name, "desktop.ini\0") == 0) continue;
 
-      int dirp_name_len = strlen(dirp->d_name);
+  //     int dirp_name_len = strlen(dirp->d_name);
 
-      char* path = calloc(strlen(GAMES_PATH) + dirp_name_len + 2, sizeof(char));
-      if (path == NULL)
-      {
-        printf("  ERROR: Failed to allocate memory for path\n");
-        return 1;
-      }
+  //     char* path = calloc(strlen(GAMES_PATH) + dirp_name_len + 2, sizeof(char));
+  //     if (path == NULL)
+  //     {
+  //       printf("  ERROR: Failed to allocate memory for path\n");
+  //       return 1;
+  //     }
 
-      int err = sprintf_s(path, strlen(GAMES_PATH) + dirp_name_len + 2, "%s/%s", GAMES_PATH, dirp->d_name);
-      if (err < 0)
-      {
-        printf("  ERROR: Failed to copy string to path: %d\n", err);
-        return 1;
-      }
+  //     int err = sprintf_s(path, strlen(GAMES_PATH) + dirp_name_len + 2, "%s/%s", GAMES_PATH, dirp->d_name);
+  //     if (err < 0)
+  //     {
+  //       printf("  ERROR: Failed to copy string to path: %d\n", err);
+  //       return 1;
+  //     }
 
-      int path_len = strlen(path);
+  //     int path_len = strlen(path);
         
-      struct stat s;
-      if (stat(path, &s) == 0)
-      {
-        // If what we found is a directory
-        if (s.st_mode & S_IFDIR)
-        {
-          if (search_game_directory(state, dirp, path) != 0)
-          {
-            printf("Encountered error searching game directory");
-          }
-        }
-      }
-      else
-      {
-        printf("  Error reading file\n");
-      }
+  //     struct stat s;
+  //     if (stat(path, &s) == 0)
+  //     {
+  //       // If what we found is a directory
+  //       if (s.st_mode & S_IFDIR)
+  //       {
+  //         if (search_game_directory(state, dirp, path) != 0)
+  //         {
+  //           printf("Encountered error searching game directory");
+  //         }
+  //       }
+  //     }
+  //     else
+  //     {
+  //       printf("  Error reading file\n");
+  //     }
 
-      if (path != NULL) free(path);
-    }
+  //     if (path != NULL) free(path);
+  //   }
     
-    closedir(dir);
+  //   closedir(dir);
 
-    if (state->game_entries_len > 0)
-    {
-      generate_new_game_name(state);
-      state->pages = (int)ceil((double)state->game_entries_len / (state->rows * state->columns));
-      generate_page_text(state);
-    }
+  //   if (state->game_entries_len > 0)
+  //   {
+  //     generate_new_game_name(state);
+  //     state->pages = (int)ceil((double)state->game_entries_len / (state->rows * state->columns));
+  //     generate_page_text(state);
+  //   }
     
-    return 0;
-  }
-  else
-  {
-    switch (errno)
-    {
-      case EACCES:
-        printf("find_games: Permission denied\n");
-        break;
-      case ENOENT:
-        printf("find_games: Directory does not exist\n");
-        break;
-      case ENOTDIR:
-        printf("find_games: Not a directory\n");
-        break;
-    }
-    return 1;
-  }
+  //   return 0;
+  // }
+  // else
+  // {
+  //   switch (errno)
+  //   {
+  //     case EACCES:
+  //       printf("find_games: Permission denied\n");
+  //       break;
+  //     case ENOENT:
+  //       printf("find_games: Directory does not exist\n");
+  //       break;
+  //     case ENOTDIR:
+  //       printf("find_games: Not a directory\n");
+  //       break;
+  //   }
+  //   return 1;
+  // }
+}
+
+int search_category_directory(ArcadeState* state, char* category_path)
+{
+  return 0;
 }
 
 int search_game_directory(ArcadeState* state, struct dirent* dir_entry, char* path)
@@ -1282,12 +1491,15 @@ void generate_new_game_name(ArcadeState* state)
 
 void generate_page_text(ArcadeState* state)
 {
-  const int len = 2 + ((state->page / 10) + 1) + (state->game_entries_len / (state->rows * state->columns) + 1) + 1;
-  char* str = calloc(len, sizeof(char));
+  // const int len = 2 + ((state->page / 10) + 1) + (state->game_entries_len / (state->rows * state->columns) + 1) + 1;
+  char* str = calloc(24, sizeof(char));
 
   if (str != NULL)
   {
-    sprintf(str, "[%d/%d]", state->page + 1, (int)ceil((double)state->game_entries_len / (state->rows * state->columns)));
+    if ((sprintf_s(str, 24, "[%d/%d]", state->page + 1, (int)ceil((double)state->game_entries_len / (state->rows * state->columns)))) < 0)
+    {
+      printf("ERROR: generate_page_text(): Failed to set \"str\"\n");
+    }
   }
   
   SDL_Surface* page_text_surface = TTF_RenderUTF8_Solid(font_big, str, TEXT_COLOR_FADED);
@@ -1305,7 +1517,7 @@ void set_menu_state(ArcadeState* state, MenuState new_state)
 {
   if (state == NULL)
   {
-    printf("ERROR: set_menu_state: state is null\n");
+    printf("ERROR: set_menu_state(): state is null\n");
     return;
   }
 

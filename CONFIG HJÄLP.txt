@@ -1,0 +1,36 @@
+Instruktioner för hur man konfigurerar programmet.
+
+Om det inte redan finns en fil som heter "arcade_config.txt", skapa den. Det är där i du konfigurerar programmet.
+
+Inställningar ställer du in genom en inställningstagg följt av ett värde på nästa rad.
+
+Exempel:
+
+[Inställning]
+inställningsvärde
+
+
+
+===Antal spel per sida===
+
+Du kan välja hur många rader och kolumner av spel som visas i gränssnittet. Taggarna är "Rows" och "Columns". Värdena är heltal.
+
+Exempel:
+
+[Rows]
+2
+
+[Columns]
+4
+
+
+
+===SÖKMAPPAR===
+
+Du kan specificera vilka mappar som programmet ska söka efter spel i. Taggen är "Folders". Värdena är sökvägar. Du kan specificera flera sökvägar. Programmet söker igenom mapparna från överst till underst. På så sätt kan du välja vilka spel som visas först och sist.
+
+Exempel:
+
+[Folders]
+./games/2025
+./games/2024
