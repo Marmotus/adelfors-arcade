@@ -14,14 +14,14 @@ int main(int argc, char* argv[])
   printf("Initializing SDL...\n");
   if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_JOYSTICK))
   {
-    printf("Error initializing SDL: %s\n", SDL_GetError());
+    printf("  Error initializing SDL: %s\n", SDL_GetError());
     return 1;
   }
 
   printf("Initializing TTF...\n");
   if (TTF_Init() != 0)
   {
-    printf("Error initializing TTF: %s\n", TTF_GetError());
+    printf("  Error initializing TTF: %s\n", TTF_GetError());
     return 1;
   }
 
@@ -61,7 +61,7 @@ int main(int argc, char* argv[])
   
   if (find_games(&state) != 0)
   {
-    printf("Error finding games\n");
+    printf("  Error finding games\n");
     return EXIT_FAILURE;
   }
 
