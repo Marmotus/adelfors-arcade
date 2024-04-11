@@ -13,7 +13,7 @@
 
 #define TARGET_FPS 30
 #define TICK_RATE (1000.0f / (int)TARGET_FPS)
-#define IDLE_TIMEOUT_LIMIT (TICK_RATE * TARGET_FPS * 180)
+#define IDLE_TIMEOUT_LIMIT (TICK_RATE * TARGET_FPS * 120)
 
 #define ARCADE_UI_EDGE_MARGIN 100
 #define ARCADE_GAME_BOX_PADDING 25
@@ -96,7 +96,7 @@ void free_search_folders();
 
 int find_games(ArcadeState* state);
 int search_category_directory(ArcadeState* state, char* category_path);
-int search_game_directory(ArcadeState* state, struct dirent* dir_entry, char* path);
+int search_game_directory(ArcadeState* state, char* dir_name, char* path);
 
 DWORD WINAPI start_game_thread(void* data);
 void run_selected_game(ArcadeState* state);

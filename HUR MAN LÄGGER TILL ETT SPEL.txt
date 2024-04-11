@@ -3,16 +3,27 @@ Välkommen! Här har du instruktioner på hur man lägger till ett spel i Ädelf
 Du behöver ha tillgång till datorn i maskinen så att du kan lägga till spelet.
 
 För att lägga till ett spel:
-1. Öppna "Ädelfors Arcade"-mappen,
-2. Gå till "games",
-3. Skapa en ny mapp med namnet på ditt spel. Arkadprogrammet använder mappens namn som namn på spelet.
-4. För över ditt spel till den nyligen skapade mappen. Själva spelprogrammet ("ditt_spel.exe") måste vara just i spelets mapp, inte i ännu en mapp under den. Spelets destination skall alltså vara ".../Ädelfors Arcade/games/Ditt Spel/ditt_spel.exe".
+
+1. Om det inte redan finns en spelmapp (t.ex. ".../Ädelfors Arcade/games/2024"), skapa en. Denna mapp kan vara vart som helst på datorn.
+
+2. Gå till den mappen,
+
+3. Skapa en ny mapp i denna med namnet på ditt spel. Arkadprogrammet använder mappens namn som namn på spelet.
+
+4. För över ditt spel till den nyligen skapade mappen. Själva spelprogrammet ("ditt_spel.exe") måste vara just i spelets mapp, inte i ännu en mapp under den. Spelets destination skall alltså vara ".../Ädelfors Arcade/games/2024/Ditt Spel/ditt_spel.exe".
 
 OBS: Det spelar ingen roll vad spelets körbara fil heter. Den behöver inte heta "ditt_spel.exe".
 
+5. Se till att spelmappens sökväg finns i konfig-filens (arcade_config.txt) [Folders]-värden
+
+Till exempel:
+
+[Folders]
+./games/2024
+
 Nu ska spelet fungera. Men, du kanske märker att spelet inte har en ikon i gränssnittet. För att lägga till en ikon:
 
-5. Lägg en bild-fil i spelets mapp som heter "game_icon.png" eller "game_icon.jpg". Nu borde ditt spel ha en ikon i gränssnittet.
+6. Lägg en bild-fil i spelets mapp som heter "game_icon.png" eller "game_icon.jpg". Nu borde ditt spel ha en ikon i gränssnittet.
 
 Om gränssnittet är igång så behöver du säga åt programmet att söka upp spelen på nytt genom att hålla in [SHIFT + R] och sedan trycka på [G].
 
