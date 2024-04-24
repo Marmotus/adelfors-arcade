@@ -2,7 +2,7 @@ Instruktioner för hur man konfigurerar programmet.
 
 Om det inte redan finns en fil som heter "arcade_config.txt", skapa den. Det är där i du konfigurerar programmet.
 
-För att ladda om inställningarna när spelet är igång, håll in [SHIFT + R] och tryck sedan på [C].
+För att ladda om inställningarna när arkadprogrammet är igång, håll in [SHIFT + R] och tryck sedan på [C].
 
 Inställningar ställer du in genom en inställningstagg följt av ett värde på nästa rad.
 
