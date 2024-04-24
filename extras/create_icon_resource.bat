@@ -1,1 +1,0 @@
-windres ./arcade_icon.rc -O coff -o arcade_icon.res
