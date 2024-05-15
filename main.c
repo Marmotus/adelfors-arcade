@@ -1,7 +1,10 @@
 #include "main.h"
+#include "locale.h"
 
 int main(int argc, char* argv[])
 {
+  setlocale(LC_ALL, "Swedish_Sweden");
+
   printf("Starting Adelfors Arcade...\n");
 
   ArcadeState state = {
@@ -1147,7 +1150,7 @@ int search_category_directory(ArcadeState* state, char* category_path)
     const int dir_path_len = category_path_len + strlen(dir_entry->d_name) + 2;
     char dir_path[dir_path_len];
 
-    if (sprintf_s(dir_path, dir_path_len, "%s/%s", category_path, dir_entry->d_name) < 0)
+    if (sprintf_s(dir_path, dir_path_len, "%s\\%s", category_path, dir_entry->d_name) < 0)
     {
       printf("    ERROR: Failed to set \"dir_path\"\n");
       continue;
@@ -1229,7 +1232,7 @@ int search_game_directory(ArcadeState* state, char* dir_name, char* path)
 
         char* exe_path = malloc(path_len + file_name_len + 2);
 
-        if ((sprintf_s(exe_path, path_len + file_name_len + 2, "%s/%s", path, game_dir_entry->d_name)) < 0)
+        if ((sprintf_s(exe_path, path_len + file_name_len + 2, "%s\\%s", path, game_dir_entry->d_name)) < 0)
         {
           printf("      ERROR: Failed to set exe_path\n");
           return 1;
@@ -1263,7 +1266,7 @@ int search_game_directory(ArcadeState* state, char* dir_name, char* path)
       return 1;
     }
 
-    int icon_path_set_err = sprintf_s(icon_path, path_len + strlen(icon_name) + 2, "%s/%s", path, icon_name);
+    int icon_path_set_err = sprintf_s(icon_path, path_len + strlen(icon_name) + 2, "%s\\%s", path, icon_name);
     if (icon_path_set_err < 0)
     {
       printf("      ERROR: Failed to set icon_path: %d\n", icon_path_set_err);
