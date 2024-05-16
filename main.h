@@ -1,7 +1,7 @@
-#include "./libs/SDL2/include/SDL.h"
-#include "./libs/SDL2/include/SDL_ttf.h"
-#include "./libs/SDL2/include/SDL_image.h"
-#include "./libs/SDL2/include/SDL_syswm.h"
+#include "./libs/sdl2/include/SDL.h"
+#include "./libs/sdl2/include/SDL_ttf.h"
+#include "./libs/sdl2/include/SDL_image.h"
+#include "./libs/sdl2/include/SDL_syswm.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <dirent.h>
