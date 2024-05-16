@@ -28,7 +28,7 @@ const SDL_Color SELECTION_COLOR = {60, 60, 60, 255};
 
 double timer = 0.0f;
 
-char** search_folders;
+wchar_t** search_folders;
 int search_folders_len = 0;
 
 TTF_Font* font_big = NULL;
@@ -47,8 +47,8 @@ SDL_Texture* button_accept_texture = NULL;
 SDL_Texture* arrow_texture = NULL;
 
 typedef struct {
-  char* game_title;
-  char* exe_path;
+  wchar_t* game_title;
+  wchar_t* exe_path;
   SDL_Texture* game_image;
 } GameEntry;
 
@@ -95,8 +95,8 @@ void free_game_entries(ArcadeState* state);
 void free_search_folders();
 
 int find_games(ArcadeState* state);
-int search_category_directory(ArcadeState* state, char* category_path);
-int search_game_directory(ArcadeState* state, char* dir_name, char* path);
+int search_category_directory(ArcadeState* state, wchar_t* category_path);
+int search_game_directory(ArcadeState* state, wchar_t* dir_name, wchar_t* path);
 
 DWORD WINAPI start_game_thread(void* data);
 void run_selected_game(ArcadeState* state);
@@ -120,3 +120,5 @@ void generate_new_game_name(ArcadeState* state);
 void generate_page_text(ArcadeState* state);
 
 void set_menu_state(ArcadeState* state, MenuState new_state);
+
+char* utf8_encode(const wchar_t* wstr);

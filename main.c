@@ -1,8 +1,25 @@
+/*
+  Ädelfors Arcade
+
+  Made by Hampus Selander of IT-Spåret at Ädelfors Folkhögskola
+  with help by my friend Jonathan Puide.
+*/ // TODO: Add Vin credit
+
 #include "main.h"
+#include "locale.h"
+#include "iconv.h"
+#include "fcntl.h"
 
 int main(int argc, char* argv[])
 {
-  printf("Starting Adelfors Arcade...\n");
+  // if (setlocale(LC_ALL, "Swedish_Sweden") == NULL)
+  // {
+  //   setlocale(LC_ALL, "");
+  // }
+
+  _setmode(_fileno(stdout), _O_U16TEXT); // this is windows specific
+
+  wprintf(L"Starting Ädelfors Arcade...\n");
 
   ArcadeState state = {
     .rows = 2,
@@ -52,11 +69,13 @@ int main(int argc, char* argv[])
 
   // Enable joystick input and find first available joystick
   SDL_JoystickEventState(SDL_ENABLE);
+
   state.joystick1 = SDL_JoystickOpen(0);
-  if (state.joystick1 == NULL) printf("ERROR: JOYSTICK 1 NULL!\n");
+  if (state.joystick1 == NULL) printf("WARNING: JOYSTICK 1 NULL!\n");
   else printf("Joystick 1 found\n");
+
   state.joystick2 = SDL_JoystickOpen(1);
-  if (state.joystick2 == NULL) printf("ERROR: JOYSTICK 2 NULL!\n");
+  if (state.joystick2 == NULL) printf("WARNING: JOYSTICK 2 NULL!\n");
   else printf("Joystick 2 found\n");
   
   if (find_games(&state) != 0)
@@ -357,7 +376,6 @@ int handle_events(ArcadeState* state)
               // Start game!
               if (state->game_process_handle == NULL)
               {
-                printf("%s\n", state->game_entries[get_real_selection_index(state)].exe_path);
                 state->game_process_handle = CreateThread(NULL, 0, start_game_thread, state, 0, NULL);
                 set_menu_state(state, MENU_LOADING);
               }
@@ -482,6 +500,7 @@ void render_game_select_ui(ArcadeState* state)
   {
     int count = 0;
   
+    // Display games
     for (int row = 0; row < state->rows; row++)
     {
       for (int column = 0; column < state->columns; column++)
@@ -525,16 +544,18 @@ void render_game_select_ui(ArcadeState* state)
       }
     }
     
+    // Accept button
     if (button_accept_texture != NULL)
     {
       SDL_Rect btn_rect = {0, 0, 0, 0};
       SDL_QueryTexture(button_accept_texture, NULL, NULL, &btn_rect.w, &btn_rect.h);
 
-      SDL_Rect pos_rect = {state->window_w - 500, state->window_h - 100, 75, 75};
+      SDL_Rect pos_rect = {state->window_w - 375, state->window_h - 100, 75, 75};
 
       SDL_RenderCopy(state->renderer, button_accept_texture, NULL, &pos_rect);
     }
 
+    // Run game text
     if (run_game_hint_texture != NULL)
     {
       SDL_Rect text_rect = {0, 0, 0, 0};
@@ -545,6 +566,7 @@ void render_game_select_ui(ArcadeState* state)
       SDL_RenderCopy(state->renderer, run_game_hint_texture, NULL, &text_rect);
     }
 
+    // Left arrow
     if (state->page > 0)
     {
       if (arrow_texture != NULL)
@@ -562,6 +584,7 @@ void render_game_select_ui(ArcadeState* state)
       }
     }
 
+    // Right arrow
     if ((state->game_entries_len - 1) / (state->rows * state->columns) > state->page)
     {
       if (arrow_texture != NULL)
@@ -577,6 +600,7 @@ void render_game_select_ui(ArcadeState* state)
       }
     }
 
+    // Page indicator
     if (state->game_entries_len > state->rows * state->columns && page_text_texture != NULL)
     {
       SDL_Rect text_rect = {0, 0, 0, 0};
@@ -587,6 +611,7 @@ void render_game_select_ui(ArcadeState* state)
       SDL_RenderCopy(state->renderer, page_text_texture, NULL, &text_rect);
     }
 
+    // Display the game's name
     if (game_name_texture != NULL)
     {
       SDL_Rect text_rect = {0, 0, 0, 0};
@@ -599,6 +624,7 @@ void render_game_select_ui(ArcadeState* state)
   }
   else
   {
+    // No games found
     SDL_Rect text_rect = {0, 0, 0, 0};
     SDL_QueryTexture(no_games_text_texure, NULL, NULL, &text_rect.w, &text_rect.h);
     text_rect.x = state->window_w / 2 - text_rect.w / 2;
@@ -674,6 +700,7 @@ int load_font(ArcadeState* state, const char* font_path)
 
   if (font_path != NULL && strlen(font_path) > 1)
   {
+    // TODO: Replace with bigger font
     font_big = TTF_OpenFont(font_path, 48);
     if (font_big == NULL)
     {
@@ -854,7 +881,7 @@ int load_settings(ArcadeState* state)
   char failed = 0;
 
   FILE* file;
-  file = fopen("./arcade_config.txt", "r");
+  file = _wfopen(L"./arcade_config.txt", L"r");
   if (file == NULL)
   {
     printf("ERROR: load_settings(): Could not open config file\n");
@@ -863,40 +890,36 @@ int load_settings(ArcadeState* state)
 
   free_search_folders();
 
-  char setting[64];
-  char line[512];
+  wchar_t setting[64];
+  wchar_t line[512];
   int line_number = 0;
   int line_len;
 
-  while (fgets(line, 512, file))
+  while (fgetws(line, 512, file))
   {
     line_number++;
-    line_len = strlen(line);
+    line_len = wcslen(line);
     if (line_len <= 0) continue;
 
-    for (int i = 0; i < line_len; i++)
+    // Trim whitespace from end of line
+    while (iswspace(line[line_len - 1]) != 0 || iswprint(line[line_len - 1]) == 0)
     {
-      // If line contains line feed character
-      if (line[i] == 0x0A)
-      {
-        line[i] = 0;
-        line_len--;
-        break;
-      }
+      line[line_len - 1] = 0;
+      line_len--;
     }
 
     if (
-      strcmp(line, "[Rows]") == 0 ||
-      strcmp(line, "[Columns]") == 0 ||
-      strcmp(line, "[Folders]") == 0
+      wcscmp(line, L"[Rows]") == 0 ||
+      wcscmp(line, L"[Columns]") == 0 ||
+      wcscmp(line, L"[Folders]") == 0
     )
     {
-      if (strcpy_s(setting, 64, line) != 0)
+      if (wcscpy_s(setting, 64, line) != 0)
       {
-        printf("  ERROR: Failed to set \"setting\" to \"%s\". Config line number: %d\n", line, line_number);
+        wprintf(L"  ERROR: Failed to set \"setting\" to \"%ls\". Config line number: %d\n", line, line_number);
         continue;
       }
-      else printf("  %s\n", setting);
+      else wprintf(L"  %ls\n", setting);
     }
     else
     {
@@ -904,7 +927,7 @@ int load_settings(ArcadeState* state)
 
       for (int i = 0; i < line_len; i++)
       {
-        if (isalnum(line[i]) != 0)
+        if (iswalnum(line[i]) != 0)
         {
           param_success = 1;
           break;
@@ -920,57 +943,57 @@ int load_settings(ArcadeState* state)
 
       param_success = 0;
 
-      if (strcmp(setting, "[Rows]") == 0)
+      if (wcscmp(setting, L"[Rows]") == 0)
       {
         char not_num = 0;
 
         for (int i = 0; i < line_len; i++)
         {
           // If character is not a digit
-          if (isdigit(line[i]) == 0)
+          if (iswdigit(line[i]) == 0)
           {
             not_num = 1;
             break;
           }
         }
 
-        if (not_num != 0 || atoi(line) <= 0)
+        if (not_num != 0 || _wtoi(line) <= 0)
         {
-          printf("    WARNING: Invalid parameter for %s: \"%s\". On line %d.\n", setting, line, line_number);
+          wprintf(L"    WARNING: Invalid parameter for %ls: \"%ls\". On line %d.\n", setting, line, line_number);
           continue;
         }
 
-        state->rows = atoi(line);
+        state->rows = _wtoi(line);
         param_success = 1;
       }
-      else if (strcmp(setting, "[Columns]") == 0)
+      else if (wcscmp(setting, L"[Columns]") == 0)
       {
         char not_num = 0;
 
         for (int i = 0; i < line_len; i++)
         {
           // If character is not a digit
-          if (isdigit(line[i]) == 0)
+          if (iswdigit(line[i]) == 0)
           {
             not_num = 1;
             break;
           }
         }
 
-        if (not_num != 0 || atoi(line) <= 0)
+        if (not_num != 0 || _wtoi(line) <= 0)
         {
-          printf("    WARNING: Invalid parameter for %s: \"%s\". On line %d.\n", setting, line, line_number);
+          wprintf(L"    WARNING: Invalid parameter for %ls: \"%ls\". On line %d.\n", setting, line, line_number);
           continue;
         }
 
-        state->columns = atoi(line);
+        state->columns = _wtoi(line);
         param_success = 1;
       }
-      else if (strcmp(setting, "[Folders]") == 0)
+      else if (wcscmp(setting, L"[Folders]") == 0)
       {
         if (search_folders == NULL)
         {
-          search_folders = (char**)malloc(sizeof(char**));
+          search_folders = (wchar_t**)malloc(sizeof(wchar_t**));
           if (search_folders == NULL)
           {
             printf("    ERROR: Failed to allocate memory for \"search_folders\"\n");
@@ -982,7 +1005,7 @@ int load_settings(ArcadeState* state)
         }
         else
         {
-          char** temp_ptr = (char**)realloc(search_folders, sizeof(char**) * (search_folders_len + 1));
+          wchar_t** temp_ptr = (wchar_t**)realloc(search_folders, (search_folders_len + 1) * sizeof(wchar_t**));
           if (temp_ptr == NULL)
           {
             printf("    ERROR: Failed to reallocate memory for \"search_folders\"\n");
@@ -995,8 +1018,8 @@ int load_settings(ArcadeState* state)
           search_folders = temp_ptr;
         }
 
-        search_folders[search_folders_len - 1] = malloc(line_len + 1);
-        if (strcpy_s(search_folders[search_folders_len - 1], line_len + 1, line) != 0)
+        search_folders[search_folders_len - 1] = malloc((line_len + 1) * sizeof(search_folders[search_folders_len - 1]));
+        if (wcscpy_s(search_folders[search_folders_len - 1], line_len + 1, line) != 0)
         {
           printf("    ERROR: Failed to set search_folders[%d]\n", search_folders_len - 1);
           free_search_folders();
@@ -1009,7 +1032,7 @@ int load_settings(ArcadeState* state)
 
       if (param_success != 0)
       {
-        printf("    \"%s\"\n", line);
+        wprintf(L"    \"%ls\"\n", line);
       }
     }
   }
@@ -1098,7 +1121,7 @@ int find_games(ArcadeState* state)
 
   if (state == NULL)
   {
-    printf("ERROR: find_games(): state is null\n");
+    printf("  ERROR: find_games(): state is null\n");
     return 1;
   }
 
@@ -1109,7 +1132,13 @@ int find_games(ArcadeState* state)
 
   for (int i = 0; i < search_folders_len; i++)
   {
-    if (search_category_directory(state, search_folders[i]) != 0) break;
+    if (search_category_directory(state, search_folders[i]) != 0)
+    {
+      printf("  Bad error encountered. Freeing game entries...\n");
+      free_game_entries(state);
+      printf("  Game entries freed\n");
+      break;
+    }
   }
 
   if (state->game_entries_len > 0)
@@ -1122,39 +1151,39 @@ int find_games(ArcadeState* state)
   return 0;
 }
 
-int search_category_directory(ArcadeState* state, char* category_path)
+int search_category_directory(ArcadeState* state, wchar_t* category_path)
 {
-  printf("  [%s]\n", category_path);
+  wprintf(L"  [%ls]\n", category_path);
 
   int abort = 0;
 
-  DIR* dir = opendir(category_path);
+  _WDIR* dir = _wopendir(category_path);
   if (dir == NULL)
   {
-    printf("    WARNING: Unable to open directory \"%s\"\n", category_path);
+    wprintf(L"    WARNING: Unable to open directory \"%ls\"\n", category_path);
     return 0;
   }
 
-  const int category_path_len = strlen(category_path);
+  const int category_path_len = wcslen(category_path);
 
-  struct dirent* dir_entry;
+  struct _wdirent* dir_entry;
 
-  while((dir_entry = readdir(dir)) != NULL)
+  while((dir_entry = _wreaddir(dir)) != NULL)
   {
     // Ignore current and parent directory links
-    if (strcmp(dir_entry->d_name, ".") == 0 || strcmp(dir_entry->d_name, "..") == 0) continue;
+    if (wcscmp(dir_entry->d_name, L".") == 0 || wcscmp(dir_entry->d_name, L"..") == 0) continue;
 
-    const int dir_path_len = category_path_len + strlen(dir_entry->d_name) + 2;
-    char dir_path[dir_path_len];
+    const int dir_path_len = category_path_len + wcslen(dir_entry->d_name) + 2;
+    wchar_t dir_path[dir_path_len];
 
-    if (sprintf_s(dir_path, dir_path_len, "%s/%s", category_path, dir_entry->d_name) < 0)
+    if (swprintf_s(dir_path, dir_path_len, L"%ls/%ls", category_path, dir_entry->d_name) < 0)
     {
       printf("    ERROR: Failed to set \"dir_path\"\n");
       continue;
     }
 
     struct stat s;
-    if (stat(dir_path, &s) == 0)
+    if (wstat(dir_path, &s) == 0)
     {
       // If what we found is a directory
       if (s.st_mode & S_IFDIR)
@@ -1169,45 +1198,45 @@ int search_category_directory(ArcadeState* state, char* category_path)
     }
     else
     {
-      printf("    Error reading file \"%s\"\n", dir_path);
+      wprintf(L"    Error reading file \"%ls\"\n", dir_path);
     }
   }
 
-  closedir(dir);
+  _wclosedir(dir);
 
   return abort;
 }
 
-int search_game_directory(ArcadeState* state, char* dir_name, char* path)
+int search_game_directory(ArcadeState* state, wchar_t* dir_name, wchar_t* path)
 {
   // Open the directory and look for a .exe
-  DIR* game_dir = opendir(path);
+  _WDIR* game_dir = _wopendir(path);
   
   if (game_dir == NULL)
   {
-    printf("    WARNING: Could not search game directory \"%s\"\n", path);
+    wprintf(L"    WARNING: Could not search game directory \"%ls\"\n", path);
     return 0;
   }
 
-  int path_len = strlen(path);
-  int dir_name_len = strlen(dir_name);
+  const int path_len = wcslen(path);
+  const int dir_name_len = wcslen(dir_name);
   
   char exe_found = 0;
-  char* icon_name = NULL;
+  wchar_t* icon_name = NULL;
   
-  struct dirent* game_dir_entry;
-  while((game_dir_entry = readdir(game_dir)) != NULL)
+  struct _wdirent* game_dir_entry;
+  while((game_dir_entry = _wreaddir(game_dir)) != NULL)
   {
-    if (strcmp(game_dir_entry->d_name, ".") == 0 || strcmp(game_dir_entry->d_name, "..") == 0 || strcmp(game_dir_entry->d_name, "desktop.ini") == 0) continue;
+    if (wcscmp(game_dir_entry->d_name, L".") == 0 || wcscmp(game_dir_entry->d_name, L"..") == 0 || wcscmp(game_dir_entry->d_name, L"desktop.ini") == 0) continue;
     // Ignore some potential .exes
-    if (strcmp(game_dir_entry->d_name, "UnityCrashHandler64.exe") == 0) continue;
+    if (wcscmp(game_dir_entry->d_name, L"UnityCrashHandler64.exe") == 0) continue;
     
-    int file_name_len = strlen(game_dir_entry->d_name);
+    const int file_name_len = wcslen(game_dir_entry->d_name);
     if (file_name_len > 4)
     {
-      if (game_dir_entry->d_name[file_name_len - 4] == '.' && game_dir_entry->d_name[file_name_len - 3] == 'e' && game_dir_entry->d_name[file_name_len - 2] == 'x' && game_dir_entry->d_name[file_name_len - 1] == 'e' && exe_found == 0)
+      if (game_dir_entry->d_name[file_name_len - 4] == L'.' && game_dir_entry->d_name[file_name_len - 3] == L'e' && game_dir_entry->d_name[file_name_len - 2] == L'x' && game_dir_entry->d_name[file_name_len - 1] == L'e' && exe_found == 0)
       {
-        printf("    [%s]\n", dir_name);
+        wprintf(L"    [%ls]\n", dir_name);
 
         state->game_entries_len++;
 
@@ -1218,18 +1247,26 @@ int search_game_directory(ArcadeState* state, char* dir_name, char* path)
           return 1;
         }
 
+        wchar_t* game_title;
+
         state->game_entries[state->game_entries_len - 1].game_image = NULL;
-        state->game_entries[state->game_entries_len - 1].game_title = malloc(dir_name_len + 1);
-        int err = strcpy_s(state->game_entries[state->game_entries_len - 1].game_title, dir_name_len + 1, dir_name);
-        if (err != 0)
+        game_title = malloc((dir_name_len + 1) * sizeof(game_title));
+        if (game_title == NULL)
         {
-          printf("      ERROR: Could not copy name to game_title: %d\n", err);
+          printf("      ERROR: Failed to allocate memory for game_title\n");
+          return 1;
+        }
+        if (wcscpy_s(game_title, dir_name_len + 1, dir_name) != 0)
+        {
+          printf("      ERROR: Could not copy name to game_title\n");
           return 1;
         }
 
-        char* exe_path = malloc(path_len + file_name_len + 2);
+        state->game_entries[state->game_entries_len - 1].game_title = game_title;
 
-        if ((sprintf_s(exe_path, path_len + file_name_len + 2, "%s/%s", path, game_dir_entry->d_name)) < 0)
+        wchar_t* exe_path = malloc((path_len + file_name_len + 2) * sizeof(state->game_entries->exe_path));
+
+        if ((swprintf_s(exe_path, path_len + file_name_len + 2, L"%ls/%ls", path, game_dir_entry->d_name)) < 0)
         {
           printf("      ERROR: Failed to set exe_path\n");
           return 1;
@@ -1238,14 +1275,13 @@ int search_game_directory(ArcadeState* state, char* dir_name, char* path)
         state->game_entries[state->game_entries_len - 1].exe_path = exe_path;
         exe_found = 1;
 
-        printf("      %s\n", exe_path);
+        wprintf(L"      %ls\n", exe_path);
       }
-      else if (strcmp(game_dir_entry->d_name, "game_icon.png\0") == 0 || strcmp(game_dir_entry->d_name, "game_icon.jpg\0") == 0)
+      else if (wcscmp(game_dir_entry->d_name, L"game_icon.png\0") == 0 || wcscmp(game_dir_entry->d_name, L"game_icon.jpg\0") == 0)
       {
-        icon_name = malloc(14);
+        icon_name = malloc(14 * sizeof(icon_name));
 
-        int icon_name_set_err = strcpy_s(icon_name, 14, game_dir_entry->d_name);
-        if (icon_name_set_err != 0)
+        if (wcscpy_s(icon_name, 14, game_dir_entry->d_name) != 0)
         {
           printf("      ERROR: Failed to set icon_name\n");
           return 1;
@@ -1256,36 +1292,31 @@ int search_game_directory(ArcadeState* state, char* dir_name, char* path)
 
   if (exe_found == 1 && icon_name != NULL)
   {
-    char* icon_path = malloc(path_len + strlen(icon_name) + 2);
+    const int icon_path_len = path_len + wcslen(icon_name) + 1;
+    
+    wchar_t* icon_path = malloc((icon_path_len + 2) * sizeof(icon_path));
     if (icon_path == NULL)
     {
       printf("      ERROR: Failed to allocate memory for icon_path\n");
       return 1;
     }
-
-    int icon_path_set_err = sprintf_s(icon_path, path_len + strlen(icon_name) + 2, "%s/%s", path, icon_name);
-    if (icon_path_set_err < 0)
+    
+    if (swprintf_s(icon_path, icon_path_len + 1, L"%ls/%ls", path, icon_name) < 0)
     {
-      printf("      ERROR: Failed to set icon_path: %d\n", icon_path_set_err);
+      printf("      ERROR: Failed to set icon_path\n");
       return 1;
     }
 
-    SDL_Surface* image_surface = IMG_Load(icon_path);
-    SDL_Texture* image_texture;
+    char* converted_string = utf8_encode(icon_path);
+    SDL_Texture* image_texture = IMG_LoadTexture(state->renderer, converted_string);
+    if (converted_string != NULL) free(converted_string);
 
-    if (image_surface != NULL)
+    if (image_texture != NULL)
     {
-      image_texture = SDL_CreateTextureFromSurface(state->renderer, image_surface);
-      if (image_texture != NULL)
-      {
-        state->game_entries[state->game_entries_len - 1].game_image = image_texture;
-        printf("      Icon found\n");
-      }
-      else printf("      ERROR: image_texture null: %s\n", SDL_GetError());
-
-      SDL_FreeSurface(image_surface);
+      state->game_entries[state->game_entries_len - 1].game_image = image_texture;
+      printf("      Icon found\n");
     }
-    else printf("      ERROR: image_surface null: %s\n", SDL_GetError());
+    else printf("      ERROR: image_texture null: %s\n", IMG_GetError());
 
     if (icon_path != NULL)
     {
@@ -1300,7 +1331,7 @@ int search_game_directory(ArcadeState* state, char* dir_name, char* path)
     icon_name = NULL;
   }
 
-  closedir(game_dir);
+  _wclosedir(game_dir);
 
   return 0;
 }
@@ -1325,13 +1356,13 @@ void run_selected_game(ArcadeState* state)
 {
   if (state->game_entries != NULL)
   {
-    int sel_idx = get_real_selection_index(state);
+    const int sel_idx = get_real_selection_index(state);
 
     if (state->game_entries[sel_idx].exe_path != NULL)
     {
-      printf("\n- Launching \"%s\"...\n\n", state->game_entries[sel_idx].game_title);
+      wprintf(L"\n- Launching \"%ls\"...\n\n", state->game_entries[sel_idx].game_title);
         
-      STARTUPINFO si;
+      STARTUPINFOW si;
       PROCESS_INFORMATION pi;
 
       si.dwX = 0;
@@ -1341,23 +1372,23 @@ void run_selected_game(ArcadeState* state)
       si.dwFlags = STARTF_RUNFULLSCREEN;
 
       // EXE path to supply to CreateProcess so that the game's working directory is correct
-      char exe_path[strlen(state->game_entries[sel_idx].exe_path) + 3];
-      sprintf(exe_path, "\"%s\"", state->game_entries[sel_idx].exe_path);
+      wchar_t exe_path[wcslen(state->game_entries[sel_idx].exe_path) + 3];
+      swprintf(exe_path, wcslen(state->game_entries[sel_idx].exe_path) + 3, L"\"%ls\"", state->game_entries[sel_idx].exe_path);
 
-      char dir[MAX_PATH];
-      char dir_path[MAX_PATH];
-      _splitpath_s(state->game_entries[sel_idx].exe_path,
+      wchar_t dir[MAX_PATH];
+      wchar_t dir_path[MAX_PATH];
+      _wsplitpath_s(state->game_entries[sel_idx].exe_path,
         NULL, 0,
         dir, MAX_PATH,
         NULL, 0,
         NULL, 0);
-      _makepath_s(dir_path, MAX_PATH, NULL, dir, NULL, NULL);
+      _wmakepath_s(dir_path, MAX_PATH, NULL, dir, NULL, NULL);
 
       ZeroMemory(&si, sizeof(si));
       si.cb = sizeof(si);
       ZeroMemory(&pi, sizeof(pi));
 
-      if (!CreateProcess(
+      if (!CreateProcessW(
         NULL,
         exe_path,
         NULL,
@@ -1380,7 +1411,7 @@ void run_selected_game(ArcadeState* state)
       CloseHandle(pi.hProcess);
       CloseHandle(pi.hThread);
 
-      printf("\n- \"%s\" exited\n", state->game_entries[sel_idx].game_title);
+      wprintf(L"\n- \"%ls\" exited\n", state->game_entries[sel_idx].game_title);
     }
     else
     {
@@ -1467,27 +1498,35 @@ void generate_new_game_name(ArcadeState* state)
 {
   if (state->game_entries != NULL && state->game_entries_len > 0)
   {
-    SDL_Surface* game_name_surface = TTF_RenderUTF8_Solid_Wrapped(font_big, state->game_entries[get_real_selection_index(state)].game_title, TEXT_COLOR, state->window_w - 50);
+    char* converted_string = utf8_encode(state->game_entries[get_real_selection_index(state)].game_title);
+
+    if (converted_string == NULL)
+    {
+      wprintf(L"ERROR: generate_new_game_name(): Failed to convert game_title to UTF8 string\n");
+      free(converted_string);
+      return;
+    }
+
+    SDL_Surface* game_name_surface = TTF_RenderUTF8_Solid_Wrapped(font_big, converted_string, TEXT_COLOR, state->window_w - 50);
     if (game_name_surface == NULL) printf("ERROR: generate_new_game_name(): %s\n", TTF_GetError());
     
     if (game_name_texture != NULL) SDL_DestroyTexture(game_name_texture);
     game_name_texture = SDL_CreateTextureFromSurface(state->renderer, game_name_surface);
     if (game_name_texture == NULL) printf("ERROR: generate_new_game_name(): %s\n", SDL_GetError());
     SDL_FreeSurface(game_name_surface);
+
+    free(converted_string);
   }
 }
 
 void generate_page_text(ArcadeState* state)
 {
-  // const int len = 2 + ((state->page / 10) + 1) + (state->game_entries_len / (state->rows * state->columns) + 1) + 1;
-  char* str = calloc(24, sizeof(char));
+  // 32 bytes just to be safe.
+  char str[32];
 
-  if (str != NULL)
+  if ((sprintf_s(str, 32, "[%d/%d]", state->page + 1, (int)ceil((double)state->game_entries_len / (state->rows * state->columns)))) < 0)
   {
-    if ((sprintf_s(str, 24, "[%d/%d]", state->page + 1, (int)ceil((double)state->game_entries_len / (state->rows * state->columns)))) < 0)
-    {
-      printf("ERROR: generate_page_text(): Failed to set \"str\"\n");
-    }
+    printf("ERROR: generate_page_text(): Failed to set \"str\"\n");
   }
   
   SDL_Surface* page_text_surface = TTF_RenderUTF8_Solid(font_big, str, TEXT_COLOR_FADED);
@@ -1497,8 +1536,6 @@ void generate_page_text(ArcadeState* state)
   page_text_texture = SDL_CreateTextureFromSurface(state->renderer, page_text_surface);
   if (page_text_texture == NULL) printf("ERROR: generate_page_text(): %s\n", SDL_GetError());
   SDL_FreeSurface(page_text_surface);
-
-  if (str != NULL) free(str);
 }
 
 void set_menu_state(ArcadeState* state, MenuState new_state)
@@ -1516,7 +1553,6 @@ void set_menu_state(ArcadeState* state, MenuState new_state)
       state->menu_state = new_state;
       state->next_state = new_state;
       state->input_enabled = 0;
-      render(state);
 
       break;
     }
@@ -1525,7 +1561,6 @@ void set_menu_state(ArcadeState* state, MenuState new_state)
       state->menu_state = new_state;
       state->next_state = new_state;
       state->input_enabled = 1;
-      render(state);
 
       break;
     }
@@ -1534,11 +1569,47 @@ void set_menu_state(ArcadeState* state, MenuState new_state)
       state->menu_state = new_state;
       state->next_state = new_state;
       state->input_enabled = 1;
-      render(state);
     }
     default:
     {
       break;
     }
   }
+
+  render(state);
+}
+
+// Function to convert wide string to UTF-8 string
+char* utf8_encode(const wchar_t* wstr) {
+    size_t len = wcslen(wstr) * 4 + 1;  // Allocate enough space
+    char* utf8_str = (char*)malloc(len);
+    if (!utf8_str) {
+        perror("malloc");
+        return NULL;
+    }
+
+    // Set up the conversion descriptor
+    iconv_t cd = iconv_open("UTF-8", "WCHAR_T");
+    if (cd == (iconv_t)-1) {
+        perror("iconv_open");
+        free(utf8_str);
+        return NULL;
+    }
+
+    // Perform the conversion
+    char* inbuf = (char*)wstr;
+    size_t inbytesleft = wcslen(wstr) * sizeof(wchar_t);
+    char* outbuf = utf8_str;
+    size_t outbytesleft = len;
+    if (iconv(cd, &inbuf, &inbytesleft, &outbuf, &outbytesleft) == (size_t)-1) {
+        perror("iconv");
+        free(utf8_str);
+        iconv_close(cd);
+        return NULL;
+    }
+
+    // Null-terminate the UTF-8 string
+    *outbuf = '\0';
+    iconv_close(cd);
+    return utf8_str;
 }

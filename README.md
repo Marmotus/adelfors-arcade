@@ -8,7 +8,9 @@ SDL2 is required. To install SDL2:
 
 2. Install SDL2 by running MSYS2 and entering: `pacman -S mingw-w64-x86_64-gcc` → `pacman -S mingw-w64-x86_64-SDL2` → `pacman -S mingw-w64-x86_64-SDL2_ttf` → `pacman -S mingw-w64-x86_64-SDL2_image`
 
-3. For good measure, you can keep MSYS updated by running: `pacman -Sy` → `pacman -Syy` → `pacman -Syu`
+3. libiconv is also required: `pacman -S mingw-w64-x86_64-iconv`
+
+4. For good measure, you can keep MSYS updated by running: `pacman -Sy` → `pacman -Syy` → `pacman -Syu`
 
 To compile, you simply double-click the "compile.bat" file.
 
