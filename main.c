@@ -3,7 +3,9 @@
 
   Made by Hampus Selander of IT-Spåret at Ädelfors Folkhögskola
   with help by my friend Jonathan Puide.
-*/ // TODO: Add Vin credit
+
+  Complementary Arcade Monitor program made by Vin Zedigh of IT-Spåret.
+*/
 
 #include "main.h"
 #include "locale.h"
@@ -550,7 +552,7 @@ void render_game_select_ui(ArcadeState* state)
       SDL_Rect btn_rect = {0, 0, 0, 0};
       SDL_QueryTexture(button_accept_texture, NULL, NULL, &btn_rect.w, &btn_rect.h);
 
-      SDL_Rect pos_rect = {state->window_w - 375, state->window_h - 100, 75, 75};
+      SDL_Rect pos_rect = {state->window_w - 500, state->window_h - 100, 75, 75};
 
       SDL_RenderCopy(state->renderer, button_accept_texture, NULL, &pos_rect);
     }
@@ -700,7 +702,6 @@ int load_font(ArcadeState* state, const char* font_path)
 
   if (font_path != NULL && strlen(font_path) > 1)
   {
-    // TODO: Replace with bigger font
     font_big = TTF_OpenFont(font_path, 48);
     if (font_big == NULL)
     {
