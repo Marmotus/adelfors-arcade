@@ -14,11 +14,6 @@
 
 int main(int argc, char* argv[])
 {
-  // if (setlocale(LC_ALL, "Swedish_Sweden") == NULL)
-  // {
-  //   setlocale(LC_ALL, "");
-  // }
-
   _setmode(_fileno(stdout), _O_U16TEXT); // this is windows specific
 
   wprintf(L"Starting Ädelfors Arcade...\n");
