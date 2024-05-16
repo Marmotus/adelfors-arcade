@@ -547,7 +547,7 @@ void render_game_select_ui(ArcadeState* state)
       SDL_Rect btn_rect = {0, 0, 0, 0};
       SDL_QueryTexture(button_accept_texture, NULL, NULL, &btn_rect.w, &btn_rect.h);
 
-      SDL_Rect pos_rect = {state->window_w - 400, state->window_h - 110, 75, 75};
+      SDL_Rect pos_rect = {state->window_w - 500, state->window_h - 110, 75, 75};
 
       SDL_RenderCopy(state->renderer, button_accept_texture, NULL, &pos_rect);
     }
@@ -697,7 +697,7 @@ int load_font(ArcadeState* state, const char* font_path)
 
   if (font_path != NULL && strlen(font_path) > 1)
   {
-    font_big = TTF_OpenFont(font_path, 55);
+    font_big = TTF_OpenFont(font_path, 60);
     if (font_big == NULL)
     {
       wprintf(L"  ERROR: Failed loading font\n");
@@ -706,7 +706,7 @@ int load_font(ArcadeState* state, const char* font_path)
 
     TTF_SetFontWrappedAlign(font_big, TTF_WRAPPED_ALIGN_CENTER);
 
-    font_medium = TTF_OpenFont(font_path, 33);
+    font_medium = TTF_OpenFont(font_path, 40);
     if (font_medium == NULL)
     {
       wprintf(L"  ERROR: Failed loading font\n");
