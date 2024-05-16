@@ -25,25 +25,25 @@ int main(int argc, char* argv[])
   
   load_settings(&state);
 
-  printf("Initializing SDL...\n");
+  wprintf(L"Initializing SDL...\n");
   if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_JOYSTICK))
   {
-    printf("  Error initializing SDL: %s\n", SDL_GetError());
+    wprintf(L"  Error initializing SDL: %s\n", SDL_GetError());
     return 1;
   }
 
-  printf("Initializing TTF...\n");
+  wprintf(L"Initializing TTF...\n");
   if (TTF_Init() != 0)
   {
-    printf("  Error initializing TTF: %s\n", TTF_GetError());
+    wprintf(L"  Error initializing TTF: %s\n", TTF_GetError());
     return 1;
   }
 
-  printf("Creating window...\n");
+  wprintf(L"Creating window...\n");
   state.window = SDL_CreateWindow("Ädelfors Arcade", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 800, 600, SDL_WINDOW_FULLSCREEN_DESKTOP);
   if (state.window == NULL) return 1;
 
-  printf("Creating renderer...\n");
+  wprintf(L"Creating renderer...\n");
   state.renderer = SDL_CreateRenderer(state.window, -1, SDL_RENDERER_ACCELERATED);
   if (state.renderer == NULL) return 1;
 
@@ -68,16 +68,16 @@ int main(int argc, char* argv[])
   SDL_JoystickEventState(SDL_ENABLE);
 
   state.joystick1 = SDL_JoystickOpen(0);
-  if (state.joystick1 == NULL) printf("WARNING: JOYSTICK 1 NULL!\n");
-  else printf("Joystick 1 found\n");
+  if (state.joystick1 == NULL) wprintf(L"WARNING: JOYSTICK 1 NULL!\n");
+  else wprintf(L"Joystick 1 found\n");
 
   state.joystick2 = SDL_JoystickOpen(1);
-  if (state.joystick2 == NULL) printf("WARNING: JOYSTICK 2 NULL!\n");
-  else printf("Joystick 2 found\n");
+  if (state.joystick2 == NULL) wprintf(L"WARNING: JOYSTICK 2 NULL!\n");
+  else wprintf(L"Joystick 2 found\n");
   
   if (find_games(&state) != 0)
   {
-    printf("  Error finding games\n");
+    wprintf(L"  Error finding games\n");
     return EXIT_FAILURE;
   }
 
@@ -89,7 +89,7 @@ int main(int argc, char* argv[])
 
   char should_quit = 0;
 
-  printf("Beginning loop...\n");
+  wprintf(L"Beginning loop...\n");
   
   while (should_quit == 0)
   {
@@ -100,7 +100,7 @@ int main(int argc, char* argv[])
       CloseHandle(state.game_process_handle);
       state.game_process_handle = NULL;
       if (state.window_handle != NULL) SetFocus(state.window_handle);
-      else printf("ERROR: Window handle null. Can't set focus\n");
+      else wprintf(L"ERROR: Window handle null. Can't set focus\n");
     }
 
     if (state.menu_state == MENU_GAME_SELECT)
@@ -148,7 +148,7 @@ int main(int argc, char* argv[])
   SDL_DestroyWindow(state.window);
   SDL_Quit();
 
-  printf("Shut down successfully!\n");
+  wprintf(L"Shut down successfully!\n");
   
   return EXIT_SUCCESS;
 }
@@ -157,11 +157,11 @@ void handle_arguments(ArcadeState* state, int argc, char* argv[])
 {
   char last_arg[64] = {0};
 
-  printf("Args:\n");
+  wprintf(L"Args:\n");
 
   for (int i = 1; i < argc; i++)
   {
-    printf("  %s\n", argv[i]);
+    wprintf(L"  %s\n", argv[i]);
 
     if (strlen(last_arg) > 0)
     {
@@ -187,7 +187,7 @@ int handle_events(ArcadeState* state)
 {
   if (state == NULL)
   {
-    printf("ERROR: handle_events: state is null\n");
+    wprintf(L"ERROR: handle_events: state is null\n");
   }
 
   char should_quit = 0;
@@ -282,7 +282,7 @@ int handle_events(ArcadeState* state)
                 state->game_process_handle = CreateThread(NULL, 0, start_game_thread, state, 0, NULL);
                 set_menu_state(state, MENU_LOADING);
               }
-              else printf("ERROR: Failed to start game. game_process_handle is not null\n");
+              else wprintf(L"ERROR: Failed to start game. game_process_handle is not null\n");
             }
             break;
           }
@@ -376,7 +376,7 @@ int handle_events(ArcadeState* state)
                 state->game_process_handle = CreateThread(NULL, 0, start_game_thread, state, 0, NULL);
                 set_menu_state(state, MENU_LOADING);
               }
-              else printf("ERROR: Failed to start game. game_process_handle is not null\n");
+              else wprintf(L"ERROR: Failed to start game. game_process_handle is not null\n");
             }
             else if (state->menu_state == MENU_SPLASH)
             {
@@ -472,7 +472,7 @@ void render_loading_ui(ArcadeState* state)
 {
   if (state == NULL)
   {
-    printf("ERROR: render_loading_ui: state is null");
+    wprintf(L"ERROR: render_loading_ui: state is null");
     return;
   }
 
@@ -693,14 +693,14 @@ void render_splash_ui(ArcadeState* state)
 
 int load_font(ArcadeState* state, const char* font_path)
 {
-  printf("Loading font...\n");
+  wprintf(L"Loading font...\n");
 
   if (font_path != NULL && strlen(font_path) > 1)
   {
     font_big = TTF_OpenFont(font_path, 55);
     if (font_big == NULL)
     {
-      printf("  ERROR: Failed loading font\n");
+      wprintf(L"  ERROR: Failed loading font\n");
       return 1;
     }
 
@@ -709,14 +709,14 @@ int load_font(ArcadeState* state, const char* font_path)
     font_medium = TTF_OpenFont(font_path, 33);
     if (font_medium == NULL)
     {
-      printf("  ERROR: Failed loading font\n");
+      wprintf(L"  ERROR: Failed loading font\n");
       return 1;
     }
 
     SDL_Surface* run_game_hint_surface = TTF_RenderUTF8_Solid(font_medium, "Starta spel", TEXT_COLOR_FADED);
     if (run_game_hint_surface == NULL)
     {
-      printf("  ERROR: Failed to create surface for run game hint: %s\n", TTF_GetError());
+      wprintf(L"  ERROR: Failed to create surface for run game hint: %s\n", TTF_GetError());
       return 1;
     }
     else
@@ -726,7 +726,7 @@ int load_font(ArcadeState* state, const char* font_path)
       SDL_FreeSurface(run_game_hint_surface);
       if (run_game_hint_texture == NULL)
       {
-        printf("  ERROR: Failed to create texture for run game hint: %s\n", SDL_GetError());
+        wprintf(L"  ERROR: Failed to create texture for run game hint: %s\n", SDL_GetError());
         return 1;
       }
     }
@@ -734,7 +734,7 @@ int load_font(ArcadeState* state, const char* font_path)
     SDL_Surface* loading_text_surface = TTF_RenderUTF8_Solid(font_big, "LADDAR...", TEXT_COLOR);
     if (loading_text_surface == NULL)
     {
-      printf("  ERROR: Failed to create surface for loading text: %s\n", TTF_GetError());
+      wprintf(L"  ERROR: Failed to create surface for loading text: %s\n", TTF_GetError());
       return 1;
     }
     else
@@ -744,7 +744,7 @@ int load_font(ArcadeState* state, const char* font_path)
       SDL_FreeSurface(loading_text_surface);
       if (loading_text_texture == NULL)
       {
-        printf("  ERROR: Failed to create texture for loading text: %s\n", SDL_GetError());
+        wprintf(L"  ERROR: Failed to create texture for loading text: %s\n", SDL_GetError());
         return 1;
       }
     }
@@ -752,7 +752,7 @@ int load_font(ArcadeState* state, const char* font_path)
     SDL_Surface* no_games_text_surface = TTF_RenderUTF8_Solid(font_big, "Inga spel hittades", TEXT_COLOR);
     if (no_games_text_surface == NULL)
     {
-      printf("  ERROR: Failed to create surface for no games text: %s\n", TTF_GetError());
+      wprintf(L"  ERROR: Failed to create surface for no games text: %s\n", TTF_GetError());
       return 1;
     }
     else
@@ -762,7 +762,7 @@ int load_font(ArcadeState* state, const char* font_path)
       SDL_FreeSurface(no_games_text_surface);
       if (no_games_text_texure == NULL)
       {
-        printf("  ERROR: Failed to create texture for no games text: %s\n", SDL_GetError());
+        wprintf(L"  ERROR: Failed to create texture for no games text: %s\n", SDL_GetError());
         return 1;
       }
     }
@@ -770,7 +770,7 @@ int load_font(ArcadeState* state, const char* font_path)
     SDL_Surface* version_number_surface = TTF_RenderUTF8_Solid(font_medium, VERSION_STRING_LITERAL, (SDL_Color){0, 0, 0, 150});
     if (version_number_surface == NULL)
     {
-      printf("  ERROR: Failed to create surface for version number text: %s\n", TTF_GetError());
+      wprintf(L"  ERROR: Failed to create surface for version number text: %s\n", TTF_GetError());
       return 1;
     }
     else
@@ -780,7 +780,7 @@ int load_font(ArcadeState* state, const char* font_path)
       SDL_FreeSurface(version_number_surface);
       if (version_number_texture == NULL)
       {
-        printf("  ERROR: Failed to create texture for version number text: %s\n", SDL_GetError());
+        wprintf(L"  ERROR: Failed to create texture for version number text: %s\n", SDL_GetError());
         return 1;
       }
     }
@@ -788,7 +788,7 @@ int load_font(ArcadeState* state, const char* font_path)
     SDL_Surface* any_button_text_surface = TTF_RenderUTF8_Solid(font_big, "Tryck på valfri knapp", (SDL_Color){0, 0, 0, 150});
     if (any_button_text_surface == NULL)
     {
-      printf("  ERROR: Failed to create surface for \"Any button\" text: %s\n", TTF_GetError());
+      wprintf(L"  ERROR: Failed to create surface for \"Any button\" text: %s\n", TTF_GetError());
       return 1;
     }
     else
@@ -798,7 +798,7 @@ int load_font(ArcadeState* state, const char* font_path)
       SDL_FreeSurface(any_button_text_surface);
       if (any_button_text_texture == NULL)
       {
-        printf("  ERROR: Failed to create texture for \"Any button\" text: %s\n", SDL_GetError());
+        wprintf(L"  ERROR: Failed to create texture for \"Any button\" text: %s\n", SDL_GetError());
         return 1;
       }
     }
@@ -811,7 +811,7 @@ int load_arcade_images(ArcadeState* state)
 {
   int failed = 0;
   
-  printf("Loading arcade images...\n");
+  wprintf(L"Loading arcade images...\n");
 
   SDL_Surface* splash_surface = IMG_Load("./images/arcade_splash.png");
 
@@ -819,7 +819,7 @@ int load_arcade_images(ArcadeState* state)
   {
     if ((splash_texture = SDL_CreateTextureFromSurface(state->renderer, splash_surface)) == NULL)
     {
-      printf("  ERROR: Creating texture for splash image failed\n");
+      wprintf(L"  ERROR: Creating texture for splash image failed\n");
       failed = 1;
     }
 
@@ -827,7 +827,7 @@ int load_arcade_images(ArcadeState* state)
   }
   else
   {
-    printf("  ERROR: Failed to load \"arcade_splash.png\"\n");
+    wprintf(L"  ERROR: Failed to load \"arcade_splash.png\"\n");
     failed = 1;
   }
   
@@ -837,7 +837,7 @@ int load_arcade_images(ArcadeState* state)
   {
     if ((button_accept_texture = SDL_CreateTextureFromSurface(state->renderer, button_accept_surface)) == NULL)
     {
-      printf("  ERROR: Creating texture for arcade_button_green failed\n");
+      wprintf(L"  ERROR: Creating texture for arcade_button_green failed\n");
       failed = 1;
     }
 
@@ -845,7 +845,7 @@ int load_arcade_images(ArcadeState* state)
   }
   else
   {
-    printf("  ERROR: Failed to load \"arcade_button_green.png\"\n");
+    wprintf(L"  ERROR: Failed to load \"arcade_button_green.png\"\n");
     failed = 1;
   }
 
@@ -855,7 +855,7 @@ int load_arcade_images(ArcadeState* state)
   {
     if ((arrow_texture = SDL_CreateTextureFromSurface(state->renderer, arrow_surface)) == NULL)
     {
-      printf("  ERROR: Creating texture for arrow failed\n");
+      wprintf(L"  ERROR: Creating texture for arrow failed\n");
       failed = 1;
     }
 
@@ -863,7 +863,7 @@ int load_arcade_images(ArcadeState* state)
   }
   else
   {
-    printf("  ERROR: Failed to load \"arcade_arrow.png\"\n");
+    wprintf(L"  ERROR: Failed to load \"arcade_arrow.png\"\n");
     failed = 1;
   }
 
@@ -872,7 +872,7 @@ int load_arcade_images(ArcadeState* state)
 
 int load_settings(ArcadeState* state)
 {
-  printf("Loading settings...\n");
+  wprintf(L"Loading settings...\n");
 
   char failed = 0;
 
@@ -880,7 +880,7 @@ int load_settings(ArcadeState* state)
   file = _wfopen(L"./arcade_config.txt", L"r");
   if (file == NULL)
   {
-    printf("ERROR: load_settings(): Could not open config file\n");
+    wprintf(L"ERROR: load_settings(): Could not open config file\n");
     return 1;
   }
 
@@ -992,7 +992,7 @@ int load_settings(ArcadeState* state)
           search_folders = (wchar_t**)malloc(sizeof(wchar_t**));
           if (search_folders == NULL)
           {
-            printf("    ERROR: Failed to allocate memory for \"search_folders\"\n");
+            wprintf(L"    ERROR: Failed to allocate memory for \"search_folders\"\n");
             failed = 1;
             break;
           }
@@ -1004,7 +1004,7 @@ int load_settings(ArcadeState* state)
           wchar_t** temp_ptr = (wchar_t**)realloc(search_folders, (search_folders_len + 1) * sizeof(wchar_t**));
           if (temp_ptr == NULL)
           {
-            printf("    ERROR: Failed to reallocate memory for \"search_folders\"\n");
+            wprintf(L"    ERROR: Failed to reallocate memory for \"search_folders\"\n");
             free_search_folders();
             failed = 1;
             break;
@@ -1017,7 +1017,7 @@ int load_settings(ArcadeState* state)
         search_folders[search_folders_len - 1] = malloc((line_len + 1) * sizeof(search_folders[search_folders_len - 1]));
         if (wcscpy_s(search_folders[search_folders_len - 1], line_len + 1, line) != 0)
         {
-          printf("    ERROR: Failed to set search_folders[%d]\n", search_folders_len - 1);
+          wprintf(L"    ERROR: Failed to set search_folders[%d]\n", search_folders_len - 1);
           free_search_folders();
           failed = 1;
           break;
@@ -1113,11 +1113,11 @@ void free_search_folders()
 
 int find_games(ArcadeState* state)
 {
-  printf("Searching for games...\n");
+  wprintf(L"Searching for games...\n");
 
   if (state == NULL)
   {
-    printf("  ERROR: find_games(): state is null\n");
+    wprintf(L"  ERROR: find_games(): state is null\n");
     return 1;
   }
 
@@ -1130,9 +1130,9 @@ int find_games(ArcadeState* state)
   {
     if (search_category_directory(state, search_folders[i]) != 0)
     {
-      printf("  Bad error encountered. Freeing game entries...\n");
+      wprintf(L"  Bad error encountered. Freeing game entries...\n");
       free_game_entries(state);
-      printf("  Game entries freed\n");
+      wprintf(L"  Game entries freed\n");
       break;
     }
   }
@@ -1174,7 +1174,7 @@ int search_category_directory(ArcadeState* state, wchar_t* category_path)
 
     if (swprintf_s(dir_path, dir_path_len, L"%ls/%ls", category_path, dir_entry->d_name) < 0)
     {
-      printf("    ERROR: Failed to set \"dir_path\"\n");
+      wprintf(L"    ERROR: Failed to set \"dir_path\"\n");
       continue;
     }
 
@@ -1186,7 +1186,7 @@ int search_category_directory(ArcadeState* state, wchar_t* category_path)
       {
         if (search_game_directory(state, dir_entry->d_name, dir_path) != 0)
         {
-          printf("    Fatal error when searching for games. Aborting search\n");
+          wprintf(L"    Fatal error when searching for games. Aborting search\n");
           abort = 1;
           break;
         }
@@ -1239,7 +1239,7 @@ int search_game_directory(ArcadeState* state, wchar_t* dir_name, wchar_t* path)
         state->game_entries = (GameEntry*)realloc(state->game_entries, sizeof(GameEntry) * state->game_entries_len);
         if (state->game_entries == NULL)
         {
-          printf("      ERROR: Failed to reallocate memory for game_entries\n");
+          wprintf(L"      ERROR: Failed to reallocate memory for game_entries\n");
           return 1;
         }
 
@@ -1249,12 +1249,12 @@ int search_game_directory(ArcadeState* state, wchar_t* dir_name, wchar_t* path)
         game_title = malloc((dir_name_len + 1) * sizeof(game_title));
         if (game_title == NULL)
         {
-          printf("      ERROR: Failed to allocate memory for game_title\n");
+          wprintf(L"      ERROR: Failed to allocate memory for game_title\n");
           return 1;
         }
         if (wcscpy_s(game_title, dir_name_len + 1, dir_name) != 0)
         {
-          printf("      ERROR: Could not copy name to game_title\n");
+          wprintf(L"      ERROR: Could not copy name to game_title\n");
           return 1;
         }
 
@@ -1264,7 +1264,7 @@ int search_game_directory(ArcadeState* state, wchar_t* dir_name, wchar_t* path)
 
         if ((swprintf_s(exe_path, path_len + file_name_len + 2, L"%ls/%ls", path, game_dir_entry->d_name)) < 0)
         {
-          printf("      ERROR: Failed to set exe_path\n");
+          wprintf(L"      ERROR: Failed to set exe_path\n");
           return 1;
         }
 
@@ -1279,7 +1279,7 @@ int search_game_directory(ArcadeState* state, wchar_t* dir_name, wchar_t* path)
 
         if (wcscpy_s(icon_name, 14, game_dir_entry->d_name) != 0)
         {
-          printf("      ERROR: Failed to set icon_name\n");
+          wprintf(L"      ERROR: Failed to set icon_name\n");
           return 1;
         }
       }
@@ -1293,13 +1293,13 @@ int search_game_directory(ArcadeState* state, wchar_t* dir_name, wchar_t* path)
     wchar_t* icon_path = malloc((icon_path_len + 2) * sizeof(icon_path));
     if (icon_path == NULL)
     {
-      printf("      ERROR: Failed to allocate memory for icon_path\n");
+      wprintf(L"      ERROR: Failed to allocate memory for icon_path\n");
       return 1;
     }
     
     if (swprintf_s(icon_path, icon_path_len + 1, L"%ls/%ls", path, icon_name) < 0)
     {
-      printf("      ERROR: Failed to set icon_path\n");
+      wprintf(L"      ERROR: Failed to set icon_path\n");
       return 1;
     }
 
@@ -1310,9 +1310,9 @@ int search_game_directory(ArcadeState* state, wchar_t* dir_name, wchar_t* path)
     if (image_texture != NULL)
     {
       state->game_entries[state->game_entries_len - 1].game_image = image_texture;
-      printf("      Icon found\n");
+      wprintf(L"      Icon found\n");
     }
-    else printf("      ERROR: image_texture null: %s\n", IMG_GetError());
+    else wprintf(L"      ERROR: image_texture null: %s\n", IMG_GetError());
 
     if (icon_path != NULL)
     {
@@ -1337,7 +1337,7 @@ DWORD WINAPI start_game_thread(void* data)
   ArcadeState* state = (ArcadeState*)data;
   if (state == NULL)
   {
-    printf("Error: start_game_thread: state is null\n");
+    wprintf(L"Error: start_game_thread: state is null\n");
     state->next_state = MENU_GAME_SELECT;
     return 0;
   }
@@ -1396,7 +1396,7 @@ void run_selected_game(ArcadeState* state)
         &si,
         &pi))
       {
-        printf("ERROR: Failed to launch game. CreateProcess failed: %lu\n", GetLastError());
+        wprintf(L"ERROR: Failed to launch game. CreateProcess failed: %lu\n", GetLastError());
         return;
       }
 
@@ -1411,12 +1411,12 @@ void run_selected_game(ArcadeState* state)
     }
     else
     {
-      printf("ERROR: Failed to launch game. Game's exe_path is NULL\n");
+      wprintf(L"ERROR: Failed to launch game. Game's exe_path is NULL\n");
     }
   }
   else
   {
-    printf("ERROR: Failed to start game. game_entries is NULL\n");
+    wprintf(L"ERROR: Failed to start game. game_entries is NULL\n");
   }
 }
 
@@ -1504,11 +1504,11 @@ void generate_new_game_name(ArcadeState* state)
     }
 
     SDL_Surface* game_name_surface = TTF_RenderUTF8_Solid_Wrapped(font_big, converted_string, TEXT_COLOR, state->window_w - 50);
-    if (game_name_surface == NULL) printf("ERROR: generate_new_game_name(): %s\n", TTF_GetError());
+    if (game_name_surface == NULL) wprintf(L"ERROR: generate_new_game_name(): %s\n", TTF_GetError());
     
     if (game_name_texture != NULL) SDL_DestroyTexture(game_name_texture);
     game_name_texture = SDL_CreateTextureFromSurface(state->renderer, game_name_surface);
-    if (game_name_texture == NULL) printf("ERROR: generate_new_game_name(): %s\n", SDL_GetError());
+    if (game_name_texture == NULL) wprintf(L"ERROR: generate_new_game_name(): %s\n", SDL_GetError());
     SDL_FreeSurface(game_name_surface);
 
     free(converted_string);
@@ -1522,15 +1522,15 @@ void generate_page_text(ArcadeState* state)
 
   if ((sprintf_s(str, 32, "[%d/%d]", state->page + 1, (int)ceil((double)state->game_entries_len / (state->rows * state->columns)))) < 0)
   {
-    printf("ERROR: generate_page_text(): Failed to set \"str\"\n");
+    wprintf(L"ERROR: generate_page_text(): Failed to set \"str\"\n");
   }
   
   SDL_Surface* page_text_surface = TTF_RenderUTF8_Solid(font_big, str, TEXT_COLOR_FADED);
-  if (page_text_surface == NULL) printf("ERROR: generate_page_text(): %s\n", TTF_GetError());
+  if (page_text_surface == NULL) wprintf(L"ERROR: generate_page_text(): %s\n", TTF_GetError());
 
   if (page_text_texture != NULL) SDL_DestroyTexture(page_text_texture);
   page_text_texture = SDL_CreateTextureFromSurface(state->renderer, page_text_surface);
-  if (page_text_texture == NULL) printf("ERROR: generate_page_text(): %s\n", SDL_GetError());
+  if (page_text_texture == NULL) wprintf(L"ERROR: generate_page_text(): %s\n", SDL_GetError());
   SDL_FreeSurface(page_text_surface);
 }
 
@@ -1538,7 +1538,7 @@ void set_menu_state(ArcadeState* state, MenuState new_state)
 {
   if (state == NULL)
   {
-    printf("ERROR: set_menu_state(): state is null\n");
+    wprintf(L"ERROR: set_menu_state(): state is null\n");
     return;
   }
 
