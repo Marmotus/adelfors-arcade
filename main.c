@@ -7,7 +7,7 @@
 
 #include "main.h"
 #include "locale.h"
-#include "./libs/iconv/include/iconv.h"
+#include "iconv.h"
 #include "fcntl.h"
 
 int main(int argc, char* argv[])
