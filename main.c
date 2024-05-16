@@ -547,7 +547,7 @@ void render_game_select_ui(ArcadeState* state)
       SDL_Rect btn_rect = {0, 0, 0, 0};
       SDL_QueryTexture(button_accept_texture, NULL, NULL, &btn_rect.w, &btn_rect.h);
 
-      SDL_Rect pos_rect = {state->window_w - 500, state->window_h - 100, 75, 75};
+      SDL_Rect pos_rect = {state->window_w - 400, state->window_h - 110, 75, 75};
 
       SDL_RenderCopy(state->renderer, button_accept_texture, NULL, &pos_rect);
     }
@@ -558,7 +558,7 @@ void render_game_select_ui(ArcadeState* state)
       SDL_Rect text_rect = {0, 0, 0, 0};
       SDL_QueryTexture(run_game_hint_texture, NULL, NULL, &text_rect.w, &text_rect.h);
       text_rect.x = state->window_w - text_rect.w - 50;
-      text_rect.y = state->window_h - 75;
+      text_rect.y = state->window_h - text_rect.h - 50;
 
       SDL_RenderCopy(state->renderer, run_game_hint_texture, NULL, &text_rect);
     }
@@ -697,7 +697,7 @@ int load_font(ArcadeState* state, const char* font_path)
 
   if (font_path != NULL && strlen(font_path) > 1)
   {
-    font_big = TTF_OpenFont(font_path, 48);
+    font_big = TTF_OpenFont(font_path, 55);
     if (font_big == NULL)
     {
       printf("  ERROR: Failed loading font\n");
@@ -706,7 +706,7 @@ int load_font(ArcadeState* state, const char* font_path)
 
     TTF_SetFontWrappedAlign(font_big, TTF_WRAPPED_ALIGN_CENTER);
 
-    font_medium = TTF_OpenFont(font_path, 32);
+    font_medium = TTF_OpenFont(font_path, 33);
     if (font_medium == NULL)
     {
       printf("  ERROR: Failed loading font\n");
