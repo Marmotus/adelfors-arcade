@@ -47,6 +47,9 @@ int main(int argc, char* argv[])
   state.renderer = SDL_CreateRenderer(state.window, -1, SDL_RENDERER_ACCELERATED);
   if (state.renderer == NULL) return 1;
 
+  // Allow for drawing semi-transparent objects
+  SDL_SetRenderDrawBlendMode(state.renderer, SDL_BLENDMODE_BLEND);
+
   SDL_GetRendererOutputSize(state.renderer, &state.window_w, &state.window_h);
 
   SDL_SysWMinfo wm_info;
@@ -86,6 +89,7 @@ int main(int argc, char* argv[])
   SDL_EventState(SDL_MOUSEMOTION, SDL_IGNORE);
 
   set_menu_state(&state, MENU_SPLASH);
+  timer = IDLE_TIMEOUT_LIMIT;
 
   char should_quit = 0;
 
@@ -103,14 +107,19 @@ int main(int argc, char* argv[])
       else wprintf(L"ERROR: Window handle null. Can't set focus\n");
     }
 
-    if (state.menu_state == MENU_GAME_SELECT)
+    if (state.menu_state != MENU_LOADING && state.menu_state != MENU_DARKENED)
     {
       timer += TICK_RATE;
 
-      if (timer >= IDLE_TIMEOUT_LIMIT)
+      if (timer >= DARKEN_TIMEOUT_LIMIT && state.menu_state != MENU_DARKENED)
+      {
+        set_menu_state(&state, MENU_DARKENED);
+        timer = 0;
+      }
+      else if (timer >= IDLE_TIMEOUT_LIMIT && state.menu_state != MENU_SPLASH)
       {
         set_menu_state(&state, MENU_SPLASH);
-        timer = 0;
+        // timer = 0;
       }
     }
 
@@ -193,6 +202,7 @@ int handle_events(ArcadeState* state)
   char should_quit = 0;
   char should_render = 0;
   char remove_splash = 0;
+  char remove_darken = 0;
 
   const Uint8* keyboard_state = SDL_GetKeyboardState(NULL);
   
@@ -217,9 +227,16 @@ int handle_events(ArcadeState* state)
           int old_index = get_real_selection_index(state);
 
           if (state->menu_state == MENU_GAME_SELECT) timer = 0;
+          else if (state->menu_state == MENU_DARKENED)
+          {
+            remove_darken = 1;
+            timer = IDLE_TIMEOUT_LIMIT;
+            break;
+          }
           else if (state->menu_state == MENU_SPLASH)
           {
-            set_menu_state(state, MENU_GAME_SELECT);
+            remove_splash = 1;
+            timer = 0;
             break;
           }
           
@@ -263,9 +280,16 @@ int handle_events(ArcadeState* state)
       case SDL_JOYBUTTONDOWN:
       {
         if (state->menu_state == MENU_GAME_SELECT) timer = 0;
+        else if (state->menu_state == MENU_DARKENED)
+        {
+          remove_darken = 1;
+          timer = IDLE_TIMEOUT_LIMIT;
+          break;
+        }
         else if (state->menu_state == MENU_SPLASH)
         {
           remove_splash = 1;
+          timer = 0;
           break;
         }
 
@@ -323,9 +347,16 @@ int handle_events(ArcadeState* state)
       case SDL_KEYDOWN:
       {
         if (state->menu_state == MENU_GAME_SELECT) timer = 0;
+        else if (state->menu_state == MENU_DARKENED)
+        {
+          remove_darken = 1;
+          timer = IDLE_TIMEOUT_LIMIT;
+          break;
+        }
         else if (state->menu_state == MENU_SPLASH)
         {
           remove_splash = 1;
+          timer = 0;
           break;
         }
         
@@ -335,34 +366,22 @@ int handle_events(ArcadeState* state)
         {
           case SDL_SCANCODE_UP:
           {
-            if (state->menu_state == MENU_GAME_SELECT)
-            {
-              move_select_up(state);
-            }
+            if (state->menu_state == MENU_GAME_SELECT) move_select_up(state);
             break;
           }
           case SDL_SCANCODE_DOWN:
           {
-            if (state->menu_state == MENU_GAME_SELECT)
-            {
-              move_select_down(state);
-            }
+            if (state->menu_state == MENU_GAME_SELECT) move_select_down(state);
             break;
           }
           case SDL_SCANCODE_LEFT:
           {
-            if (state->menu_state == MENU_GAME_SELECT)
-            {
-              move_select_left(state);
-            }
+            if (state->menu_state == MENU_GAME_SELECT) move_select_left(state);
             break;
           }
           case SDL_SCANCODE_RIGHT:
           {
-            if (state->menu_state == MENU_GAME_SELECT)
-            {
-              move_select_right(state);
-            }
+            if (state->menu_state == MENU_GAME_SELECT) move_select_right(state);
             break;
           }
 
@@ -373,6 +392,7 @@ int handle_events(ArcadeState* state)
               // Start game!
               if (state->game_process_handle == NULL)
               {
+                // TODO: Make separate function
                 state->game_process_handle = CreateThread(NULL, 0, start_game_thread, state, 0, NULL);
                 set_menu_state(state, MENU_LOADING);
               }
@@ -447,11 +467,13 @@ int handle_events(ArcadeState* state)
   }
 
   // Doing it this way to cancel out other inputs on the same frame
-  if (remove_splash)
-  {
+  if (remove_darken) {
+    set_menu_state(state, MENU_SPLASH);
+  }
+  else if (remove_splash){
     set_menu_state(state, MENU_GAME_SELECT);
   }
-  else if (should_render == 1) render(state);
+  else if (should_render) render(state);
   
   return should_quit;
 }
@@ -461,9 +483,25 @@ void render(ArcadeState* state)
   SDL_SetRenderDrawColor(state->renderer, BACKGROUND_COLOR.r, BACKGROUND_COLOR.g, BACKGROUND_COLOR.b, BACKGROUND_COLOR.a);
   SDL_RenderClear(state->renderer);
 
-  if (state->menu_state == MENU_LOADING) render_loading_ui(state);
-  else if (state->menu_state == MENU_GAME_SELECT) render_game_select_ui(state);
-  else if (state->menu_state == MENU_SPLASH) render_splash_ui(state);
+  switch (state->menu_state) {
+    case MENU_LOADING: {
+      render_loading_ui(state);
+      break;
+    }
+    case MENU_GAME_SELECT: {
+      render_game_select_ui(state);
+      break;
+    }
+    case MENU_SPLASH: {
+      render_splash_ui(state);
+      break;
+    }
+    case MENU_DARKENED: {
+      render_darkened(state);
+      break;
+    }
+    default: {break;}
+  }
 
   SDL_RenderPresent(state->renderer);
 }
@@ -689,6 +727,14 @@ void render_splash_ui(ArcadeState* state)
 
     SDL_RenderCopy(state->renderer, any_button_text_texture, NULL, &text_rect);
   }
+}
+
+void render_darkened(ArcadeState* state)
+{
+  render_splash_ui(state);
+  SDL_SetRenderDrawColor(state->renderer, 0, 0, 0, 210);
+  SDL_Rect rect = {0, 0, state->window_w, state->window_h};
+  SDL_RenderFillRect(state->renderer, &rect);
 }
 
 int load_font(ArcadeState* state, const char* font_path)
@@ -1546,31 +1592,32 @@ void set_menu_state(ArcadeState* state, MenuState new_state)
   {
     case MENU_LOADING:
     {
-      state->menu_state = new_state;
-      state->next_state = new_state;
       state->input_enabled = 0;
-
       break;
     }
     case MENU_GAME_SELECT:
     {
-      state->menu_state = new_state;
-      state->next_state = new_state;
       state->input_enabled = 1;
-
       break;
     }
     case MENU_SPLASH:
     {
-      state->menu_state = new_state;
-      state->next_state = new_state;
       state->input_enabled = 1;
+      break;
+    }
+    case MENU_DARKENED:
+    {
+      state->input_enabled = 1;
+      break;
     }
     default:
     {
       break;
     }
   }
+
+  state->menu_state = new_state;
+  state->next_state = new_state;
 
   render(state);
 }

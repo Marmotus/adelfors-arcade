@@ -14,6 +14,7 @@
 #define TARGET_FPS 30
 #define TICK_RATE (1000.0f / (int)TARGET_FPS)
 #define IDLE_TIMEOUT_LIMIT (TICK_RATE * TARGET_FPS * 120)
+#define DARKEN_TIMEOUT_LIMIT (TICK_RATE * TARGET_FPS * 300)
 
 #define ARCADE_UI_EDGE_MARGIN 100
 #define ARCADE_GAME_BOX_PADDING 25
@@ -42,7 +43,6 @@ SDL_Texture* page_text_texture = NULL;
 SDL_Texture* version_number_texture = NULL;
 SDL_Texture* splash_texture = NULL;
 SDL_Texture* any_button_text_texture = NULL;
-
 SDL_Texture* button_accept_texture = NULL;
 SDL_Texture* arrow_texture = NULL;
 
@@ -61,13 +61,14 @@ typedef enum {
   MENU_LOADING = 0,
   MENU_GAME_SELECT = 1,
   MENU_SPLASH = 2,
+  MENU_DARKENED = 3,
 } MenuState;
 
 typedef struct {
   SDL_Window* window;
   SDL_Renderer* renderer;
   HWND window_handle;
-  HANDLE game_process_handle;
+  HANDLE game_process_handle; // TODO: Rename to "game_thread_handle"
   int window_w;
   int window_h;
   int rows;
@@ -108,6 +109,7 @@ void render(ArcadeState* state);
 void render_loading_ui(ArcadeState* state);
 void render_game_select_ui(ArcadeState* state);
 void render_splash_ui(ArcadeState* state);
+void render_darkened(ArcadeState* state);
 
 void move_select_up(ArcadeState* state);
 void move_select_down(ArcadeState* state);
