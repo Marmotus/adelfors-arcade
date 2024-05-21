@@ -27,9 +27,7 @@ Nu ska spelet fungera. Men, du kanske märker att spelet inte har en ikon i grä
 
 Om gränssnittet är igång så behöver du säga åt programmet att söka upp spelen på nytt genom att hålla in [SHIFT + R] och sedan trycka på [G].
 
-OBS: Det kan dyka upp problem om bilden är i sRGB-format. När man exporterar en bild ifrån, t.ex., Photoshop så finns det en kryssruta under "Color Space" för "Convert to sRGB". Se till att den är av.
-
-Bilden får gärna vara i så liten storlek som möjligt så att den inte tar upp mer minne än vad som är nödvändigt. Den behöver inte vara 1920 x 1080, alltså. Detta gör så att fler spel får plats. Om ditt spel är pixel-temat så kan bilden till och med vara 100 x 100 eller mindre.
+Bilden får gärna vara i så liten storlek som möjligt så att den inte tar upp mer minne än vad som är nödvändigt.
 
 Grattis! Du har nu lagt till ett spel i Ädelfors Arcade!
 
