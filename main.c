@@ -732,7 +732,7 @@ void render_splash_ui(ArcadeState* state)
 void render_darkened(ArcadeState* state)
 {
   render_splash_ui(state);
-  SDL_SetRenderDrawColor(state->renderer, 0, 0, 0, 210);
+  SDL_SetRenderDrawColor(state->renderer, 0, 0, 0, 230);
   SDL_Rect rect = {0, 0, state->window_w, state->window_h};
   SDL_RenderFillRect(state->renderer, &rect);
 }
