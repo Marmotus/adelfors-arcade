@@ -68,7 +68,7 @@ typedef struct {
   SDL_Window* window;
   SDL_Renderer* renderer;
   HWND window_handle;
-  HANDLE game_process_handle; // TODO: Rename to "game_thread_handle"
+  HANDLE game_thread_handle;
   int window_w;
   int window_h;
   int rows;
@@ -99,6 +99,7 @@ int find_games(ArcadeState* state);
 int search_category_directory(ArcadeState* state, wchar_t* category_path);
 int search_game_directory(ArcadeState* state, wchar_t* dir_name, wchar_t* path);
 
+void start_game_pressed(ArcadeState* state);
 DWORD WINAPI start_game_thread(void* data);
 void run_selected_game(ArcadeState* state);
 

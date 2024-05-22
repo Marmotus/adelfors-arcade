@@ -99,10 +99,10 @@ int main(int argc, char* argv[])
   {
     should_quit = handle_events(&state);
     
-    if (state.menu_state != MENU_LOADING && state.game_process_handle != NULL)
+    if (state.menu_state != MENU_LOADING && state.game_thread_handle != NULL)
     {
-      CloseHandle(state.game_process_handle);
-      state.game_process_handle = NULL;
+      CloseHandle(state.game_thread_handle);
+      state.game_thread_handle = NULL;
       if (state.window_handle != NULL) SetFocus(state.window_handle);
       else wprintf(L"ERROR: Window handle null. Can't set focus\n");
     }
@@ -301,12 +301,7 @@ int handle_events(ArcadeState* state)
             if (state->menu_state == MENU_GAME_SELECT)
             {
               // Start game!
-              if (state->game_process_handle == NULL)
-              {
-                state->game_process_handle = CreateThread(NULL, 0, start_game_thread, state, 0, NULL);
-                set_menu_state(state, MENU_LOADING);
-              }
-              else wprintf(L"ERROR: Failed to start game. game_process_handle is not null\n");
+              start_game_pressed(state);
             }
             break;
           }
@@ -390,13 +385,7 @@ int handle_events(ArcadeState* state)
             if (state->menu_state == MENU_GAME_SELECT)
             {
               // Start game!
-              if (state->game_process_handle == NULL)
-              {
-                // TODO: Make separate function
-                state->game_process_handle = CreateThread(NULL, 0, start_game_thread, state, 0, NULL);
-                set_menu_state(state, MENU_LOADING);
-              }
-              else wprintf(L"ERROR: Failed to start game. game_process_handle is not null\n");
+              start_game_pressed(state);
             }
             else if (state->menu_state == MENU_SPLASH)
             {
@@ -1376,6 +1365,16 @@ int search_game_directory(ArcadeState* state, wchar_t* dir_name, wchar_t* path)
   _wclosedir(game_dir);
 
   return 0;
+}
+
+void start_game_pressed(ArcadeState* state)
+{
+  if (state->game_thread_handle == NULL)
+  {
+    state->game_thread_handle = CreateThread(NULL, 0, start_game_thread, state, 0, NULL);
+    set_menu_state(state, MENU_LOADING);
+  }
+  else wprintf(L"ERROR: Failed to start game. game_thread_handle is not null\n");
 }
 
 DWORD WINAPI start_game_thread(void* data)
