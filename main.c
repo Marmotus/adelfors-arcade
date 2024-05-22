@@ -912,10 +912,11 @@ int load_settings(ArcadeState* state)
   char failed = 0;
 
   FILE* file;
-  file = _wfopen(L"./arcade_config.txt", L"r");
-  if (file == NULL)
+  errno_t open_file_result = _wfopen_s(&file, L"./arcade_config.txt", L"r");
+  if (open_file_result != 0)
   {
-    wprintf(L"ERROR: load_settings(): Could not open config file\n");
+    wprintf(L"  ERROR: load_settings(): Could not open \"arcade_config.txt\": %s\n", strerror(open_file_result));
+
     return 1;
   }
 
